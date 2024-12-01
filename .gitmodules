@@ -1,0 +1,3 @@
+[submodule "lagrit-sys/vendor/lagrit"]
+	path = lagrit-sys/vendor/lagrit
+	url = https://github.com/lanl/LaGriT.git

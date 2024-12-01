@@ -1,0 +1,18 @@
+[build-system]
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "lagrit-bindings-rs"
+requires-python = ">=3.8"
+classifiers = [
+  "Programming Language :: Rust",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dynamic = ["version"]
+
+[tool.maturin]
+python-source = "python"
+python-packages = ["pylagrit"]
+features = ["pyo3/extension-module"]
