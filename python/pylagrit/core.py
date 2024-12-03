@@ -77,6 +77,10 @@ class PyLaGriT:
         self.core.close()
 
     @property
+    def before(self) -> str:
+        return self.core.cmdmsg()
+
+    @property
     def mo_list(self) -> List["MO"]:
         return [MO(k, self) for k in self.core.mo_names()]
 
@@ -4757,12 +4761,6 @@ class EltSet:
         ...     erefine.delete()
         >>> mtri = mqua.copypts("triplane")
         >>> mtri.connect()
-
-
-        # Make sure that not nodes are lost during connect
-        # >>> if "The mesh is complete but could not include all points." in lg.before:
-        # ...     print("Error: Lost some points during connect, not completing mesh and exiting workflow!")
-        # ...     sys.exit()
 
         >>> mtri.tri_mesh_output_prep()
         >>> mtri.reorder_nodes(cycle="xic yic zic")

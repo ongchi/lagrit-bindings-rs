@@ -1,12 +1,14 @@
 use std::{
     ffi::CString,
+    fs::File,
+    io::{BufReader, Read, Seek, SeekFrom},
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, OnceLock, RwLock,
     },
 };
 
-use lagrit_sys::{fc_fclose, fc_fflush};
+use lagrit_sys::{fc_fclose, fc_fflush_and_sync};
 
 use crate::{
     error::LagritError,
@@ -33,6 +35,8 @@ pub struct LaGriT {
     is_initialized: AtomicBool,
     log_file: RwLock<String>,
     batch_file: RwLock<String>,
+    cmd_msg: RwLock<String>,
+    msg_last_pos: AtomicUsize,
 }
 
 pub struct MeshObject {
@@ -55,12 +59,20 @@ impl LaGriT {
                 is_initialized: AtomicBool::new(false),
                 log_file: RwLock::new(String::with_capacity(64)),
                 batch_file: RwLock::new(String::with_capacity(64)),
+                cmd_msg: RwLock::new(String::new()),
+                msg_last_pos: AtomicUsize::new(0),
             })
         });
 
         if lg.is_initialized.load(Ordering::Relaxed) {
             return Err(LagritError::AlreadyInitialized);
         }
+
+        lg.cmd_msg
+            .write()
+            .map(|mut s| s.clear())
+            .map_err(|_| LagritError::RwLockPoisoned)?;
+        lg.msg_last_pos.store(0, Ordering::Relaxed);
 
         let log_file = log_file.unwrap_or("lagrit.log");
         let batch_file = batch_file.unwrap_or("lagrit.out");
@@ -88,29 +100,63 @@ impl LaGriT {
                 s.push_str(batch_file);
             })
             .map_err(|_| LagritError::RwLockPoisoned)?;
+        lg.update_message()?;
 
         Ok(lg.clone())
     }
 
-    pub fn sendcmd(&self, cmd: &str) -> Result<(), LagritError> {
-        dotask(cmd)?;
+    fn update_message(&self) -> Result<(), LagritError> {
+        let log_file = self
+            .log_file
+            .read()
+            .map_err(|_| LagritError::RwLockPoisoned)?
+            .clone();
+        let batch_file = self
+            .batch_file
+            .read()
+            .map_err(|_| LagritError::RwLockPoisoned)?
+            .clone();
 
         unsafe {
-            fc_fflush(
-                self.log_file
-                    .read()
-                    .map_err(|_| LagritError::RwLockPoisoned)?
-                    .as_ptr() as *mut i8,
-            );
-            fc_fflush(
-                self.batch_file
-                    .read()
-                    .map_err(|_| LagritError::RwLockPoisoned)?
-                    .as_ptr() as *mut i8,
-            );
+            fc_fflush_and_sync(log_file.as_ptr() as *mut i8);
+            fc_fflush_and_sync(batch_file.as_ptr() as *mut i8);
         }
 
+        let msg_file = File::open(batch_file)?;
+        let mut reader = BufReader::new(msg_file);
+        reader.seek(SeekFrom::Start(
+            self.msg_last_pos.load(Ordering::Relaxed) as u64
+        ))?;
+
+        let mut buf = String::new();
+        let pos = reader.read_to_string(&mut buf)?;
+
+        self.cmd_msg
+            .write()
+            .map(|mut s| {
+                s.clear();
+                s.push_str(&buf);
+            })
+            .map_err(|_| LagritError::RwLockPoisoned)?;
+
+        self.msg_last_pos.fetch_add(pos, Ordering::Relaxed);
+
         Ok(())
+    }
+
+    pub fn sendcmd(&self, cmd: &str) -> Result<(), LagritError> {
+        dotask(cmd)?;
+        self.update_message()?;
+
+        Ok(())
+    }
+
+    pub fn cmdmsg(&self) -> Result<String, LagritError> {
+        Ok(self
+            .cmd_msg
+            .read()
+            .map_err(|_| LagritError::RwLockPoisoned)?
+            .clone())
     }
 
     pub fn mo_names(&self) -> Result<Vec<String>, LagritError> {

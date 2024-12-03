@@ -85,6 +85,10 @@ impl PyLaGriT {
         Ok(self.lagrit.sendcmd(cmd)?)
     }
 
+    fn cmdmsg(&self) -> PyResult<String> {
+        Ok(self.lagrit.cmdmsg()?)
+    }
+
     fn mo_names(&self) -> PyResult<Vec<String>> {
         Ok(self.lagrit.mo_names()?)
     }

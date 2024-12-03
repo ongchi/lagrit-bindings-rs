@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 // File control functions
-extern void fc_fflush(const char *file);
+extern void fc_fflush_and_sync(const char *file);
 extern void fc_fclose(const char *file);
 
 // Memory management functions

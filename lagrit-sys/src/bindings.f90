@@ -35,6 +35,12 @@ subroutine convert_fstr(fstr, cstr)
 
 end subroutine convert_fstr
 
+function fsync(fd) bind(c, name="fsync_")
+   use iso_c_binding
+   integer(c_int), value :: fd
+   integer(c_int) :: fsync
+end function fsync
+
 subroutine fc_initlagrit(mode, log_file, batch_file) bind(c)
    use iso_c_binding
    implicit none
@@ -61,7 +67,7 @@ subroutine fc_initlagrit(mode, log_file, batch_file) bind(c)
 
 end subroutine fc_initlagrit
 
-subroutine fc_fflush(file) bind(c)
+subroutine fc_fflush_and_sync(file) bind(c)
    use iso_c_binding
    implicit none
 
@@ -69,13 +75,15 @@ subroutine fc_fflush(file) bind(c)
 
    ! general function
    character(len=256) :: convert_cstr
+   integer(c_int) :: fsync
 
-   integer :: fid
+   integer :: fid, fsync_ret
 
    inquire (file=trim(convert_cstr(file)), number=fid)
    flush (fid)
+   fsync_ret = fsync(fnum(fid))
 
-end subroutine fc_fflush
+end subroutine fc_fflush_and_sync
 
 subroutine fc_fclose(file) bind(c)
    use iso_c_binding

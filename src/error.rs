@@ -18,6 +18,8 @@ pub enum LagritError {
     Code(i32),
     #[error(transparent)]
     NullError(#[from] std::ffi::NulError),
+    #[error(transparent)]
+    StdIoError(#[from] std::io::Error),
 }
 
 impl From<i32> for LagritError {
