@@ -9,6 +9,7 @@ members = ["lagrit-sys"]
 [features]
 default = ["pyo3"]
 pyo3 = ["dep:pyo3"]
+exodus = ["lagrit-sys/exodus"]
 
 [dependencies]
 lagrit-sys = { version = "0.1.0", path = "lagrit-sys" }

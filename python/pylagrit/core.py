@@ -628,7 +628,7 @@ class PyLaGriT:
         ... )
         >>> mo.dump("gmv", "test.gmv")
 
-        Convert test.gmv to exoduce and contour files.
+        Convert test.gmv to exodus and contour files.
         >>> lg.convert("test.gmv", "exo")
         >>> lg.convert("test.gmv", "avs")
 
@@ -2294,9 +2294,8 @@ class MO:
         >>> stack_hex.stack_layers(stack_files, "avs", flip_opt=True)
         >>> stack = stack_hex.stack_fill()
 
-        # TODO: Exodus suppport
-        # >>> stack.dump_exo("rotated.exo")
-        # >>> stack.dump_ats_xml("rotated.xml", "rotated.exo")
+        >>> stack.dump_exo("rotated.exo")
+        >>> stack.dump_ats_xml("rotated.xml", "rotated.exo")
 
         >>> lg.close()
 
@@ -2913,8 +2912,7 @@ class MO:
         ... )
         >>> fs = mo.create_boundary_facesets(base_name="faceset_bounds")
 
-        # TODO: Support exodus file
-        # >>> mo.dump_exo("cube.exo", facesets=fs.values())
+        >>> mo.dump_exo("cube.exo", facesets=fs.values())
 
         >>> lg.close()
 

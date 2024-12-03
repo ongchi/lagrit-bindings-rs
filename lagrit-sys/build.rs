@@ -8,6 +8,11 @@ fn main() {
     // LaGriT
     let mut cmake_config = cmake::Config::new(vendor_dir.join("lagrit"));
     cmake_config.define("CMAKE_INSTALL_PREFIX", &out_path);
+
+    if cfg!(feature = "exodus") {
+        cmake_config.define("LAGRIT_BUILD_EXODUS", "ON");
+    }
+
     cmake_config.out_dir(out_path.join("build"));
     let lagrit_root = cmake_config.build();
 
@@ -42,4 +47,21 @@ fn main() {
     println!("cargo:rustc-link-lib=c");
     println!("cargo:rustc-link-lib=c++");
     println!("cargo:rustc-link-lib=stdc++");
+
+    if cfg!(feature = "exodus") {
+        println!(
+            "cargo:rustc-link-search=native={}",
+            vendor_dir
+                .join("lagrit")
+                .join("TPLs")
+                .join("seacas")
+                .join("lib")
+                .display()
+        );
+        println!("cargo:rustc-link-lib=static=exodus");
+        println!("cargo:rustc-link-lib=static=exoIIv2for32");
+        println!("cargo:rustc-link-lib=static=netcdf");
+        println!("cargo:rustc-link-lib=static=hdf5");
+        println!("cargo:rustc-link-lib=static=hdf5_hl");
+    }
 }
