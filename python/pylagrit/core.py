@@ -3266,6 +3266,48 @@ class MO:
         connect : bool, optional
             Whether or not to connect points, by default True
 
+        Examples
+        --------
+        >>> import pylagrit
+        >>> lg = pylagrit.PyLaGriT()
+
+        Create 2x2x2 cell mesh
+        >>> m = lg.create()
+        >>> m.createpts_dxyz(
+        ...     (0.5, 0.5, 0.5), (0.0, 0.0, 0.0), (1.0, 1.0, 1.0), rz_switch=[1, 1, 1], connect=True
+        ... )
+
+        Create 2x2x2 mesh where maxs will be truncated to nearest value under given maxs
+        >>> m_under = lg.create()
+        >>> m_under.createpts_dxyz(
+        ...     (0.4, 0.4, 0.4), (0.0, 0.0, 0.0), (1.0, 1.0, 1.0), rz_switch=[1, 1, 1], connect=True
+        ... )
+
+        Create 3x3x3 mesh where maxs will be truncated to nearest value over given maxs
+        >>> m_over = lg.create()
+        >>> m_over.createpts_dxyz(
+        ...     (0.4, 0.4, 0.4),
+        ...     (0.0, 0.0, 0.0),
+        ...     (1.0, 1.0, 1.0),
+        ...     clip="over",
+        ...     rz_switch=[1, 1, 1],
+        ...     connect=True,
+        ... )
+
+        Create 3x3x3 mesh where x and y maxs will be truncated to nearest value over given maxs and z min will be truncated  to nearest value
+        >>> m_mixed = lg.create()
+        >>> m_mixed.createpts_dxyz(
+        ...     (0.4, 0.4, 0.4),
+        ...     (0.0, 0.0, -1.0),
+        ...     (1.0, 1.0, 0.0),
+        ...     hard_bound=("min", "min", "max"),
+        ...     clip=("under", "under", "over"),
+        ...     rz_switch=[1, 1, 1],
+        ...     connect=True,
+        ... )
+
+        >>> lg.close()
+
         """
         if isinstance(hard_bound, str):
             hard_bound = (hard_bound, hard_bound, hard_bound)
@@ -4166,7 +4208,12 @@ class MO:
         >>> edge_length = [1000, 500, 250, 125, 75, 40, 20, 15]
         >>> for i, l in enumerate(edge_length):
         ...     motri.resetpts_itp()
-        ...     motri.refine(refine_option='rivara',refine_type='edge',values=[l],inclusive_flag='inclusive')
+        ...     motri.refine(
+        ...         refine_option='rivara',
+        ...         refine_type='edge',
+        ...         values=[l],
+        ...         inclusive_flag='inclusive'
+        ...     )
         ...     motri.smooth()
         ...     motri.recon(0)
 
