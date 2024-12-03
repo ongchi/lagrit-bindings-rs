@@ -23,7 +23,7 @@ import pyvista as pv
 from pyvista import CellType
 
 from lagrit_bindings import LaGriT, MeshObject
-from .cell_type_maps import (
+from pylagrit.cell_type_maps import (
     CELL_NODE_NUMBERS,
     NODES_FOR_FACE,
     PF_CELL_TYPE_MAP,
@@ -118,40 +118,46 @@ class PyLaGriT:
         Example 1
 
         >>> import pylagrit
-        >>> # Create your pylagrit session.
+        >>> import numpy as np
         >>> lg = pylagrit.PyLaGriT()
-        >>> # Create a mesh object and dump it to a gmv file 'test.gmv'.
+
+        Create a mesh object and dump it to a gmv file 'test.gmv'.
         >>> mo = lg.create(name="test")
         >>> mo.createpts_brick("xyz", (5, 5, 5), (0, 0, 0), (5, 5, 5))
         >>> mo.dump("test.gmv")
         >>> mo.dump("test.avs")
-        >>> mo.dump("test.lg")
+
         >>> mo1 = lg.read_mo("test.gmv")
         >>> mo2 = lg.read_mo("test.avs")
-        >>> mo3 = lg.read_mo("test.lg", name="test")
 
-        Example 2 - Reading in LaGriT binary file, autodetect mesh object name
-
-        >>> import pylagrit
-        >>> import numpy as np
-        >>> # Instantiate the lagrit object.
-        >>> lg = pylagrit.PyLaGriT()
-        >>> # Create list with mesh object as first element
-        >>> dxyz = np.array([0.25] * 3)
-        >>> mins = np.array([0.0] * 3)
-        >>> maxs = np.array([1.0] * 3)
-        >>> ms = [
-        ...     lg.createpts_dxyz(dxyz, mins, maxs, "tet", connect=True, name="testmo")
-        ... ]
-        >>> # Create three new mesh objects, each one directly above the other
-        >>> for i in range(3):
-        >>>     ms.append(ms[-1].copy())
-        >>>     ms[-1].trans(ms[-1].mins,ms[-1].mins+np.array([0.,0.,1.]))
-        >>> lg.dump("lagrit_binary.lg")
         >>> lg.close()
         >>> lg = pylagrit.PyLaGriT()
+
+        Example 2 - Reading in LaGriT binary file
+
+        Create list with mesh object as first element
+        >>> dxyz = (0.25, 0.25, 0.25)
+        >>> mins = (0.0, 0.0, 0.0)
+        >>> maxs = (1.0, 1.0, 1.0)
+        >>> mos = [
+        ...     lg.createpts_dxyz(dxyz, mins, maxs, "tet", connect=True, name="testmo")
+        ... ]
+
+        Create three new mesh objects, each one directly above the other
+        >>> for i in range(3):
+        ...     mos.append(mos[-1].copy())
+        ...     mins = (mos[-1].attr("xmin"), mos[-1].attr("ymin"), mos[-1].attr("zmin"))
+        ...     mos[-1].trans(mins, mins + np.array([0.0, 0.0, 1.0]))
+        >>> lg.dump("lagrit_binary.lg")
+
+        >>> lg.close()
+        >>> lg = pylagrit.PyLaGriT()
+
         >>> ms_read = lg.read_mo("lagrit_binary.lg")
-        >>> print 'Name of mesh object read in should be testmo, is: ', ms_read.name
+        >>> print([mo.name for mo in ms_read])
+        ['testmo', 'mo1', 'mo2', 'mo3']
+
+        >>> lg.close()
 
         """
         old_mo_list = self.core.mo_names()
@@ -216,7 +222,7 @@ class PyLaGriT:
                         or np.all(np.diff(crds[:, 2])) == 0
                         or np.all(np.diff(crds[:, 3])) == 0
                     ):
-                        elem_type = "quad"
+                        elem_type = "qua"
                     else:
                         elem_type = "tet"
             for conn in conns:
@@ -283,18 +289,19 @@ class PyLaGriT:
         Building a surface mesh from Modflow elevation file
 
         >>> import pylagrit
-        >>>
-        >>> l = pylagrit.PyLaGriT()
+        >>> lg = pylagrit.PyLaGriT()
         >>>
         >>> # Elevation files are typically headerless unwrapped vectors
         >>> # Define parameters to pack these elements into a matrix
         >>> ncols = 276
         >>> nrows = 313
-        >>> DXY = [100, 100]
-        >>>
-        >>> elev_surface = l.read_sheetij(
+        >>> DXY = (100, 100)
+
+        >>> elev_surface = lg.read_sheetij(
         ...     "surfacemesh", "example.mod", [ncols, nrows], [0, 0], DXY, flip="y"
         ... )
+
+        >>> lg.close()
 
         """
 
@@ -564,7 +571,12 @@ class PyLaGriT:
         Examples
         --------
 
-        >> lg.define(MO_PTS=mo_pts.name,OUTFILE='mesh.inp',PERTURB32=1.3244)
+        >>> import pylagrit
+        >>> lg = pylagrit.PyLaGriT()
+
+        >>> lg.define(MO_PTS="mo1",OUTFILE="mesh.inp",PERTURB32=1.3244)
+
+        >>> lg.close()
 
         Equivalent to LaGriT script:
 
@@ -600,11 +612,9 @@ class PyLaGriT:
         Examples
         --------
         >>> import pylagrit
-        >>>
-        >>> # Create your pylagrit session.
         >>> lg = pylagrit.PyLaGriT()
-        >>>
-        >>> # Create a mesh object and dump it to a gmv file 'test.gmv'.
+
+        Create a mesh object and dump it to a gmv file 'test.gmv'.
         >>> mo = lg.create(name="test")
         >>> mo.createpts_brick(
         ...     "xyz",
@@ -613,10 +623,12 @@ class PyLaGriT:
         ...     (5, 5, 5),
         ... )
         >>> mo.dump("gmv", "test.gmv")
-        >>>
-        >>> # Convert test.gmv to exoduce and contour files.
+
+        Convert test.gmv to exoduce and contour files.
         >>> lg.convert("test.gmv", "exo")
         >>> lg.convert("test.gmv", "avs")
+
+        >>> lg.close()
 
         """
         # Make sure I support the new filetype.
@@ -652,22 +664,27 @@ class PyLaGriT:
         --------
         >>> import pylagrit
         >>> import numpy as np
-        >>> # Instantiate the lagrit object.
         >>> lg = pylagrit.PyLaGriT()
-        >>> # Create list with mesh object as first element
-        >>> dxyz = np.array([0.25] * 3)
-        >>> mins = np.array([0.0] * 3)
-        >>> maxs = np.array([1.0] * 3)
-        >>> ms = [lg.createpts_dxyz(dxyz, mins, maxs, "tet", connect=True)]
-        >>> # Create three new mesh objects, each one directly above the other
+
+        Create list with mesh object as first element
+        >>> dxyz = (0.25, 0.25, 0.25)
+        >>> mins = (0.0, 0.0, 0.0)
+        >>> maxs = (1.0, 1.0, 1.0)
+        >>> mos = [lg.createpts_dxyz(dxyz, mins, maxs, "tet", connect=True)]
+
+        Create three new mesh objects, each one directly above the other
         >>> for i in range(3):
-        ...     ms.append(ms[-1].copy())
-        ...     ms[-1].trans(ms[-1].mins,ms[-1].mins+np.array([0.,0.,1.]))
-        >>> # Merge list of mesh objects and clean up
-        >>> mo_merge = lg.merge(ms)
-        >>> for mo in ms:
+        ...     mos.append(mos[-1].copy())
+        ...     mins = (mos[-1].attr("xmin"), mos[-1].attr("ymin"), mos[-1].attr("zmin"))
+        ...     mos[-1].trans(mins, mins + np.array([0.0, 0.0, 1.0]))
+
+        Merge list of mesh objects and clean up
+        >>> mo_merge = lg.merge(mos)
+        >>> for mo in mos:
         ...     mo.delete()
         >>> mo_merge.rmpoint_compress(filter_bool=True, resetpts_itp=True)
+
+        >>> lg.close()
 
         """
         if name is None:
@@ -804,7 +821,7 @@ class PyLaGriT:
 
     def tri_mo_from_polyline(
         self,
-        coords: List[Tuple[float, float, float]],
+        coords: List[Tuple[float, float, float] | Tuple[float, float]],
         filename="polyline.inp",
         name: Optional[str] = None,
     ) -> "MO":
@@ -831,9 +848,12 @@ class PyLaGriT:
         --------
         >>> import pylagrit
         >>> lg = pylagrit.PyLaGriT()
+
         >>> mo = lg.tri_mo_from_polyline(
         ...     [(0.0, 0.0), (0.0, 1.0), (1.0, 1.0), (1.0, 0.0)]
         ... )
+
+        >>> lg.close()
 
         """
         mstr = str(len(coords)) + " " + str(len(coords)) + " 0 0 0\n"
@@ -1005,31 +1025,31 @@ class PyLaGriT:
         Examples
         --------
         >>> import pylagrit
-        >>> l = pylagrit.PyLaGriT()
-        >>>
+        >>> lg = pylagrit.PyLaGriT()
+
         >>> # Create 2x2x2 cell mesh
-        >>> m = l.create()
-        >>> m.createpts_dxyz(
+        >>> mo = lg.create()
+        >>> mo.createpts_dxyz(
         ...     (0.5, 0.5, 0.5),
         ...     (0.0, 0.0, 0.0),
         ...     (1.0, 1.0, 1.0),
         ...     rz_switch=[1, 1, 1],
         ...     connect=True,
         ... )
-        >>>
+
         >>> # Create 2x2x2 mesh where maxs will be truncated to nearest value under given maxs
-        >>> m_under = l.create()
-        >>> m_under.createpts_dxyz(
+        >>> mo_under = lg.create()
+        >>> mo_under.createpts_dxyz(
         ...     (0.4, 0.4, 0.4),
         ...     (0.0, 0.0, 0.0),
         ...     (1.0, 1.0, 1.0),
         ...     rz_switch=[1, 1, 1],
         ...     connect=True,
         ... )
-        >>>
+
         >>> # Create 3x3x3 mesh where maxs will be truncated to nearest value over given maxs
-        >>> m_over = l.create()
-        >>> m_over.createpts_dxyz(
+        >>> mo_over = lg.create()
+        >>> mo_over.createpts_dxyz(
         ...     (0.4, 0.4, 0.4),
         ...     (0.0, 0.0, 0.0),
         ...     (1.0, 1.0, 1.0),
@@ -1037,11 +1057,11 @@ class PyLaGriT:
         ...     rz_switch=[1, 1, 1],
         ...     connect=True,
         ... )
-        >>>
+
         >>> # Create 3x3x3 mesh where x and y maxs will be truncated to nearest value over given maxs
         >>> # and z min will be truncated  to nearest value
-        >>> m_mixed = l.create()
-        >>> m_mixed.createpts_dxyz(
+        >>> mo_mixed = lg.create()
+        >>> mo_mixed.createpts_dxyz(
         ...     (0.4, 0.4, 0.4),
         ...     (0.0, 0.0, -1.0),
         ...     (1.0, 1.0, 0.0),
@@ -1050,6 +1070,8 @@ class PyLaGriT:
         ...     rz_switch=[1, 1, 1],
         ...     connect=True,
         ... )
+
+        >>> lg.close()
 
         """
         mo = self.create(elem_type=elem_type, name=name)
@@ -1147,15 +1169,17 @@ class PyLaGriT:
         Examples
         --------
         >>> import pylagrit
-        >>> import numpy
-        >>>
+        >>> import numpy as np
         >>> lg = pylagrit.PyLaGriT()
-        >>> x0 = -numpy.logspace(1, 2, 15, endpoint=True)
-        >>> x1 = numpy.arange(-10, 10, 1)
+
+        >>> x0 = -np.logspace(1, 2, 15, endpoint=True)
+        >>> x1 = np.arange(-10, 10, 1)
         >>> x2 = -x0
-        >>> x = numpy.concatenate([x0, x1, x2])
+        >>> x = np.concatenate([x0, x1, x2])
         >>> y = x
-        >>> mqua = lg.gridder(x, y, elem_type="quad", connect=True)
+        >>> mqua = lg.gridder(x, y, elem_type="qua", connect=True)
+
+        >>> lg.close()
 
         """
         # TODO: validation for point set
@@ -1177,7 +1201,7 @@ class PyLaGriT:
         #         "Error: Only 1 coordinate array (x,y,z) required for elem_type 'line'"
         #     )
         #     return
-        # if elem_type in ["tri", "quad"] and dim != 2:
+        # if elem_type in ["tri", "qua"] and dim != 2:
         #     print(
         #         "Error: Only 2 coordinate arrays (x,y,z) required for elem_type '"
         #         + str(elem_type)
@@ -1190,7 +1214,7 @@ class PyLaGriT:
         #         + str(elem_type)
         #         + "'"
         #     )
-        #     print("Set elem_type to a 2D format like 'quad' or 'triplane'")
+        #     print("Set elem_type to a 2D format like 'qua' or 'triplane'")
         #     return
         xx = np.array([0]) if x is None or len(x) == 0 else np.unique(x)
         yy = np.array([0]) if y is None or len(y) == 0 else np.unique(y)
@@ -1217,7 +1241,7 @@ class PyLaGriT:
         )
         m.read(filename)
 
-        if elem_type in ["quad", "hex"] and connect:
+        if elem_type in ["qua", "hex"] and connect:
             cmd = [
                 "createpts",
                 "brick",
@@ -1267,6 +1291,7 @@ class PyLaGriT:
         --------
         >>> import pylagrit
         >>> lg = pylagrit.PyLaGriT()
+
         >>> coords = [
         ...     [0, 0, 0],
         ...     [1, 0, 0],
@@ -1278,6 +1303,8 @@ class PyLaGriT:
         ...     [1, 0, 1],
         ... ]
         >>> m = lg.points(coords, elem_type="tet", connect=True)
+
+        >>> lg.close()
 
         """
         # TODO: validation for point set
@@ -1294,7 +1321,7 @@ class PyLaGriT:
         # if elem_type in ["line"] and dim != 1:
         #     print("Error: Coordinates must form line for elem_type 'line'")
         #     return
-        # if elem_type in ["tri", "quad"] and dim != 2:
+        # if elem_type in ["tri", "qua"] and dim != 2:
         #     print(
         #         "Error: Coordinates must form plane for elem_type '"
         #         + str(elem_type)
@@ -1305,7 +1332,7 @@ class PyLaGriT:
         #     print(
         #         "Error: 3D coordinates required for elem_type '" + str(elem_type) + "'"
         #     )
-        #     print("Set elem_type to a 2D format like 'quad' or 'triplane'")
+        #     print("Set elem_type to a 2D format like 'qua' or 'triplane'")
         #     return
 
         outfile = open(filename, "w")
@@ -1320,7 +1347,7 @@ class PyLaGriT:
         outfile.close()
         m = self.create(elem_type)
         m.read(filename)
-        if elem_type in ["quad", "hex"] and connect:
+        if elem_type in ["qua", "hex"] and connect:
             cmd = [
                 "createpts",
                 "brick",
@@ -1625,23 +1652,25 @@ class MO:
         Examples
         -------
         >>> import pylagrit
-        >>> lg = PyLaGriT()
-        >>>
-        >>> # create source mesh
-        >>> npts = (11,11,11)
-        >>> mins = (0.,0.,0.)
-        >>> maxs = (1.,1.,1.)
+        >>> lg = pylagrit.PyLaGriT()
+
+        Create source mesh
+        >>> npts = (11, 11, 11)
+        >>> mins = (0., 0., 0.)
+        >>> maxs = (1., 1., 1.)
         >>> mesh = lg.create()
-        >>> mesh.createpts_brick_xyz(npts,mins,maxs)
-        >>>
-        >>> # write node and element attribute numbers
+        >>> mesh.createpts_brick("xyz", npts, mins, maxs)
+
+        Write node and element attribute numbers
         >>> mesh.set_id('both',node_attname='node_att1',elem_attname='elem_att1')
-        >>>
+
         >>> # select and remove points
         >>> p_mins = (0.5,0.,0.)
         >>> p_maxs = (1.,1.,1.)
-        >>> points = mesh.pset_geom_xyz(p_mins,p_maxs)
+        >>> points = mesh.pset_geom("xyz", p_mins, p_maxs)
         >>> mesh.rmpoint_pset(points)
+
+        >>> lg.close()
 
         """
         if option == "both":
@@ -1691,9 +1720,9 @@ class MO:
         self,
         mins: Tuple[float, float, float],
         maxs: Tuple[float, float, float],
-        ctr=(0, 0, 0),
+        ctr: Tuple[float, float, float] = (0, 0, 0),
         geom: Literal["xyz", "rtz", "rtp"] = "xyz",
-        stride=(1, 0, 0),
+        stride: Tuple[int, int, int] = (1, 0, 0),
         name: Optional[str] = None,
     ):
         """
@@ -1830,22 +1859,24 @@ class MO:
         Examples
         --------
         >>> import pylagrit
-        >>> lg = pylagrit.PyLaGriT
-        >>>
-        >>> # create source mesh
+        >>> lg = pylagrit.PyLaGriT()
+
+        Create source mesh
         >>> npts = (1,91,1)
         >>> mins = (3.,0.,0.)
         >>> maxs = (3.,270.,0.)
         >>> src_mo = lg.create()
-        >>> src_mo.createpts_rtz(npts,mins,maxs,connect=False)
-        >>>
-        >>> # create sink mesh
+        >>> src_mo.createpts("rtz", npts, mins, maxs, connect=False)
+
+        Create sink mesh
         >>> snk_mo = lg.create()
-        >>> snk_mo.createpts("xyz", [30,30,1],[-5.,-5.,-5.],[5.,5.,5.],connect=False)
-        >>>
-        >>> # compute distance and store in sink mesh attribute 'dfield'
+        >>> snk_mo.createpts("xyz", [30, 30, 1],[-5., -5., -5.],[5., 5., 5.], connect=False)
+
+        Compute distance and store in sink mesh attribute 'dfield'
         >>> snk_mo.compute_distance(src_mo)
         >>> snk_mo.dump('comptest.gmv')
+
+        >>> lg.close()
 
         """
         self.sendcmd("/".join(["compute", option, self.name, mo.name, attname]))
@@ -1875,32 +1906,34 @@ class MO:
         Examples
         --------
         >>> import pylagrit
-        >>> lg = pylagrit.PyLaGriT
-        >>>
-        >>> # create surface mesh
+        >>> lg = pylagrit.PyLaGriT()
+
+        Create surface mesh
         >>> p1 = (-1.,-1.,-1.)
         >>> p2 = (301.,-1.,-1.)
         >>> p3 = (301.,301.,-1.)
         >>> p4 = (-1.,301.,-1.)
         >>> pts = [p1,p2,p3,p4]
         >>> nnodes = (30,30,1)
-        >>> surf = lg.create_qua()
+        >>> surf = lg.create("qua")
         >>> surf.quadxy(nnodes,pts)
-        >>>
-        >>> # make surface mesh interesting
+
+        Make surface mesh interesting
         >>> surf.math('sin','zic',cmosrc=surf,attsrc='xic')
         >>> surf.math('multiply','zic',value=5.0,cmosrc=surf,attsrc='zic')
         >>> surf.perturb(0.,0.,1.)
         >>> surf.math('add','zic',value=60.0,cmosrc=surf,attsrc='zic')
-        >>>
-        >>> # create base mesh
-        >>> hex = lg.create_hex()
-        >>> hex.createpts_brick_xyz([30,30,20],[0.,0.,0.],[300.,300.,50.])
+
+        Create base mesh
+        >>> hex = lg.create("hex")
+        >>> hex.createpts_brick("xyz", (30, 30, 20), (0., 0., 0.), (300., 300., 50.))
         >>> hex.resetpts_itp()
-        >>>
-        >>> # extrapolate z values from surface mesh to base mesh
+
+        Extrapolate z values from surface mesh to base mesh
         >>> hex.compute_extrapolate(surf)
         >>> hex.dump('extrapolated.gmv')
+
+        >>> lg.close()
 
         """
         self.sendcmd(
@@ -2073,8 +2106,8 @@ class MO:
         filename_root : str
             Root name of file to write
 
-        eset_name : EltSet, optional
-            Name of eltset to write; if blank, all eltsets in mesh object are written
+        eltset : EltSet, optional
+            Eltset to write; if blank, all eltsets in mesh object are written
 
         ascii : bool, optional
             Switch to indicate ascii (True) or binary (False) format, by default True
@@ -2083,25 +2116,27 @@ class MO:
         --------
         >>> import pylagrit
         >>> import numpy as np
-        >>> import sys
-        >>>
-        >>> lg = PyLaGriT()
-        >>>
+        >>> lg = pylagrit.PyLaGriT()
+
         >>> dxyz = np.array([0.1, 0.25, 0.25])
         >>> mins = np.array([0.0, 0.0, 0.0])
         >>> maxs = np.array([1.0, 1.0, 1.0])
         >>> mqua = lg.createpts_dxyz(
-        ...     dxyz, mins, maxs, "quad", hard_bound=("min", "max", "min"), connect=True
+        ...     dxyz, mins, maxs, "qua", hard_bound=("min", "max", "min"), connect=True
         ... )
-        >>>
-        >>> example_pset1 = mqua.pset_geom_xyz(mins, maxs - (maxs - mins) / 2)
+
+        >>> example_pset1 = mqua.pset_geom("xyz", mins, maxs - (maxs - mins) / 2)
         >>> example_eset1 = example_pset1.eltset()
-        >>> example_pset2 = mqua.pset_geom_xyz(mins + maxs / 2, maxs)
+        >>> example_pset2 = mqua.pset_geom("xyz", mins + maxs / 2, maxs)
         >>> example_eset2 = example_pset2.eltset()
-        >>> # to write one specific eltset
-        >>> mqua.eltset_write("test_specific", eset_name=example_eset1)
-        >>> # to write all eltsets
+
+        Write specific eltset
+        >>> mqua.eltset_write("test_specific", eltset=example_eset1)
+
+        Write all eltsets
         >>> mqua.eltset_write("test_all")
+
+        >>> lg.close()
 
         """
         name = "-all-" if eltset is None else eltset.name
@@ -2199,68 +2234,67 @@ class MO:
         (xic, yic, zic); no values will be set for any other mesh object attribute for these points.
         Note:  The end points of the  line segment must extend well beyond the point set being rotated.
 
-        Eamples
+        Examples
         --------
         Example 1
 
         >>> import pylagrit
         >>> import numpy as np
-        >>>
+        >>> lg = pylagrit.PyLaGriT()
+
         >>> x = np.arange(0, 10.1, 1)
         >>> y = x
         >>> z = [0, 1]
-        >>>
-        >>> lg = pylagrit.PyLaGriT()
+
         >>> mqua = lg.gridder(x, y, z, elem_type="hex", connect=True)
-        >>> mqua.rotateln([mqua.xmin - 0.1, 0, 0], [mqua.xmax + 0.1, 0, 0], 25)
+        >>> mqua.rotateln((mqua.attr("xmin") - 0.1, 0, 0), (mqua.attr("xmax") + 0.1, 0, 0), 25)
         >>> mqua.dump_exo("rotated.exo")
         >>> mqua.dump_ats_xml("rotated.xml", "rotated.exo")
+
+        >>> lg.close()
 
         Example 2
 
         >>> import pylagrit
         >>> import numpy as np
-        >>>
+        >>> lg = pylagrit.PyLaGriT()
+
         >>> x = np.arange(0, 10.1, 1)
         >>> y = [0, 1]
-        >>> # z = [0,1]
-        >>>
-        >>> lg = pylagrit.PyLaGriT()
-        >>> layer = lg.gridder(x=x, y=y, elem_type="quad", connect=True)
-        >>> layer.rotateln([0, layer.ymin - 0.10, 0], [0, layer.ymax + 0.1, 0], 25)
+
+        >>> layer = lg.gridder(x=x, y=y, elem_type="qua", connect=True)
+        >>> layer.rotateln([0, layer.attr("ymin") - 0.10, 0], [0, layer.attr("ymax") + 0.1, 0], 25)
         >>> layer.dump("tmp_lay_top.inp")
-        >>>
-        >>> # Layer depths?
-        >>> #           1   2   3    4    5    6    7   8    9   10
+
         >>> layers = [0.1, 1.0]
         >>> addnum = [4, 2]
-        >>>
-        >>> # matnum = [2]*len(layers)
         >>> matnum = [2, 1]
         >>> layer_interfaces = np.cumsum(layers)
         >>> mtop = layer.copy()
         >>> stack_files = ["tmp_lay_top.inp 1,9"]
-        >>>
-        >>> # stack_files.append('tmp_lay_peat_bot.inp 1,33')
+
         >>> i = 1
-        >>> for li,m,a in zip(layer_interfaces,matnum,addnum):
-        ...     layer.math('sub',li,'zic',cmosrc=mtop)
-        ...     stack_files.append('tmp_lay'+str(i)+'.inp '+str(int(m))+', '+str(a))
-        ...     layer.dump('tmp_lay'+str(i)+'.inp')
+        >>> for li, m, a in zip(layer_interfaces, matnum, addnum):
+        ...     layer.math("sub", "zic", li, cmosrc=mtop)
+        ...     stack_files.append(f"tmp_lay{str(i)}.inp {str(m)}, {str(a)}")
+        ...     layer.dump(f"tmp_lay{str(i)}.inp")
         ...     i += 1
-        >>> layer.math("sub", 2, "zic", cmosrc=mtop)
-        >>>
-        >>> # layer.setatt('zic',-2.)
+        >>> layer.math("sub", "zic", 2, cmosrc=mtop)
+
         >>> layer.dump("tmp_lay_bot.inp")
         >>> stack_files.append("tmp_lay_bot.inp 2")
         >>> stack_files.reverse()
-        >>>
-        >>> # Create stacked layer mesh and fill
-        >>> stack = lg.create()
-        >>> stack.stack_layers("avs", stack_files, flip_opt=True)
-        >>> stack_hex = stack.stack_fill()
-        >>> stack_hex.dump_exo("rotated.exo")
-        >>> stack_hex.dump_ats_xml("rotated.xml", "rotated.exo")
+
+        Create stacked layer mesh and fill
+        >>> stack_hex = lg.create()
+        >>> stack_hex.stack_layers(stack_files, "avs", flip_opt=True)
+        >>> stack = stack_hex.stack_fill()
+
+        # TODO: Exodus suppport
+        # >>> stack.dump_exo("rotated.exo")
+        # >>> stack.dump_ats_xml("rotated.xml", "rotated.exo")
+
+        >>> lg.close()
 
         """
         self.sendcmd(
@@ -2862,9 +2896,10 @@ class MO:
         Examples
         --------
         >>> import pylagrit
-        >>> l = pylagrit.PyLaGriT()
-        >>> m = l.create()
-        >>> m.createpts(
+        >>> lg = pylagrit.PyLaGriT()
+
+        >>> mo = lg.create()
+        >>> mo.createpts(
         ...     "xyz",
         ...     (3, 3, 3),
         ...     (0.0, 0.0, 0.0),
@@ -2872,10 +2907,12 @@ class MO:
         ...     rz_switch=[1, 1, 1],
         ...     connect=True,
         ... )
-        >>> m.status()
-        >>> m.status(brief=True)
-        >>> fs = m.create_boundary_facesets(base_name="faceset_bounds")
-        >>> m.dump_exo("cube.exo", facesets=fs.values())
+        >>> fs = mo.create_boundary_facesets(base_name="faceset_bounds")
+
+        # TODO: Support exodus file
+        # >>> mo.dump_exo("cube.exo", facesets=fs.values())
+
+        >>> lg.close()
 
         """
         cmd = ["dump", "exo", filename, self.name]
@@ -3026,8 +3063,8 @@ class MO:
         Examples
         --------
         >>> import pylagrit
-        >>>
         >>> lg = pylagrit.PyLaGriT()
+
         >>> mo = lg.create()
         >>> mo.createpts(
         ...     "xyz",
@@ -3037,9 +3074,9 @@ class MO:
         ...     rz_switch=[1, 1, 1],
         ...     connect=True,
         ... )
-        >>> mo.status()
-        >>> mo.status(brief=True)
         >>> mo.dump_pflotran_uge("test_pflotran_dump")
+
+        >>> lg.close()
 
         """
         cmd = ["dump", "pflotran", filename_root, self.name]
@@ -3399,18 +3436,17 @@ class MO:
 
         Examples
         --------
-        >>> # To use pylagrit, import the module.
         >>> import pylagrit
-        >>>
-        >>> # Start the lagrit session.
         >>> lg = pylagrit.PyLaGriT()
-        >>>
-        >>> # Create a mesh object.
+
+        Create a mesh object.
         >>> mo = lg.create()
         >>> mo.createpts_brick("xyz", (5, 5, 5), (0, 0, 0), (5, 5, 5))
-        >>>
-        >>> # Take the subset from (3,3,3)
-        >>> mo.subset((3, 3, 3), (5, 5, 5))
+
+        Take the subset from (3,3,3)
+        >>> subset = mo.subset((3, 3, 3), (5, 5, 5))
+
+        >>> lg.close()
 
         """
 
@@ -3448,27 +3484,26 @@ class MO:
 
         Examples
         --------
-        >>> # To use pylagrit, import the module.
         >>> import pylagrit
-        >>>
-        >>> # Start the lagrit session.
         >>> lg = pylagrit.PyLaGriT()
-        >>>
-        >>> # Create a mesh object.
-        >>> qua = lg.create_qua()
-        >>>
-        >>> # Define 4 points in correct order
+
+        Create a mesh object.
+        >>> qua = lg.create("qua")
+
+        Define 4 points in correct order
         >>> p1 = (0.0, 200.0, -400.0)
         >>> p2 = (0.0, -200.0, -400.0)
         >>> p3 = (140.0, -200.0, 0.0)
         >>> p4 = (118.0, 200.0, 0.0)
         >>> pts = [p1, p2, p3, p4]
-        >>>
-        >>> # Define nnodes
+
+        Define nnodes
         >>> nnodes = (29, 1, 82)
-        >>>
-        >>> # Create and connect skewed plane
+
+        Create and connect skewed plane
         >>> qua.quadxy(nnodes, pts)
+
+        >>> lg.close()
 
         """
         self.select()
@@ -3524,34 +3559,34 @@ class MO:
         Examples
         --------
         >>> import pylagrit
-        >>>
-        >>> # Start the lagrit session.
         >>> lg = pylagrit.PyLaGriT()
-        >>>
-        >>> # Create a mesh object.
+
+        Create a mesh object.
         >>> hex = lg.create()
-        >>>
-        >>> # Define 4 bottom points in correct order
+
+        Define 4 bottom points in correct order
         >>> p1 = (0.0, 0.0, 0.0)
         >>> p2 = (1.0, 0.0, 0.02)
         >>> p3 = (1.0, 1.0, 0.0)
         >>> p4 = (0.0, 1.0, 0.1)
-        >>>
-        >>> # Define 4 top points in correct order
+
+        Define 4 top points in correct order
         >>> p5 = (0.0, 0.0, 1.0)
         >>> p6 = (1.0, 0.0, 1.0)
         >>> p7 = (1.0, 1.0, 1.0)
         >>> p8 = (0.0, 1.0, 1.1)
-        >>>
         >>> pts = [p1, p2, p3, p4, p5, p6, p7, p8]
-        >>>
-        >>> # Define nnodes
+
+        Define nnodes
         >>> nnodes = (3, 3, 3)
-        >>>
-        >>> # Create and connect skewed hex mesh
+
+        Create and connect skewed hex mesh
         >>> hex.quadxyz(nnodes, pts)
-        >>> # Dump mesh
+
+        Dump mesh
         >>> hex.dump("quadxyz_test.gmv")
+
+        >>> lg.close()
 
         """
         self.select()
@@ -4109,43 +4144,42 @@ class MO:
         Examples
         --------
         >>> import pylagrit
-        >>>
-        >>> # Create pylagrit object
         >>> lg = pylagrit.PyLaGriT()
-        >>>
-        >>> # Define polygon points in clockwise direction
-        >>> # and create tri mesh object
-        >>> coords = [[0.0, 0.0, 0.0],
-        >>>           [0.0, 1000.0, 0.0],
-        >>>           [2200.0, 200.0, 0.0],
-        >>>           [2200.0, 0.0, 0.0]]
+
+        Define polygon points in clockwise direction and create tri mesh object
+        >>> coords = [
+        ...     (0.0, 0.0, 0.0),
+        ...     (0.0, 1000.0, 0.0),
+        ...     (2200.0, 200.0, 0.0),
+        ...     (2200.0, 0.0, 0.0),
+        ... ]
         >>> motri = lg.tri_mo_from_polyline(coords)
-        >>>
-        >>> # Triangulate polygon
+
+        Triangulate polygon
         >>> motri.triangulate()
         >>> motri.setatt("imt", 1)
         >>> motri.setatt("itetclr", 1)
-        >>>
-        >>> # refine mesh with successively smaller edge length constraints
+
+        Refine mesh with successively smaller edge length constraints
         >>> edge_length = [1000, 500, 250, 125, 75, 40, 20, 15]
-        >>> for i,l in enumerate(edge_length):
-        >>>     motri.resetpts_itp()
-        >>>     motri.refine(refine_option='rivara',refine_type='edge',values=[l],inclusive_flag='inclusive')
-        >>>     motri.smooth()
-        >>>     motri.recon(0)
-        >>>
-        >>> # provide additional smoothing after the last refine
+        >>> for i, l in enumerate(edge_length):
+        ...     motri.resetpts_itp()
+        ...     motri.refine(refine_option='rivara',refine_type='edge',values=[l],inclusive_flag='inclusive')
+        ...     motri.smooth()
+        ...     motri.recon(0)
+
+        Provide additional smoothing after the last refine
         >>> for i in range(5):
-        >>>     motri.smooth()
-        >>>     motri.recon(0)
-        >>>
-        >>> # create delaunay mesh and clean up
+        ...     motri.smooth()
+        ...     motri.recon(0)
+
+        Create delaunay mesh and clean up
         >>> motri.tri_mesh_output_prep()
-        >>>
-        >>> # dump fehm files
-        >>> motri.dump_fehm("nk_mesh00")
-        >>>
-        >>> # view results
+
+        Dump fehm files
+        >>> motri.dump("fehm", "nk_mesh00")
+
+        >>> lg.close()
 
         """
         self.sendcmd("triangulate/" + order)
@@ -4186,7 +4220,7 @@ class MO:
         | Tuple[Tuple[float, float, float], Tuple[float, float, float]]  # rtz
         | Tuple[Tuple[float, float, float]],  # rpt
         region: "Region",
-        ptdist: str,
+        ptdist: Literal["inside", "in", "out", "outside", "both"] | float | int,
         stride: Tuple[float, float, float] | "PSet" = (1, 0, 0),
         irratio: float = 0,
         rrz: float = 0,
@@ -4226,28 +4260,29 @@ class MO:
         Examples
         --------
         >>> import pylagrit
-        >>> import sys
-        >>>
         >>> lg = pylagrit.PyLaGriT()
+
         >>> p1 = (30.0, 0.0, 0.0)
         >>> p2 = (30.0, 1.0, 0.0)
         >>> p3 = (30.0, 1.0, 0.1)
         >>> pts = [p1, p2, p3]
-        >>>
+
         >>> npts = (3, 3, 3)
         >>> mins = (0, 0, 0)
         >>> maxs = (10, 10, 10)
-        >>> # mesh = lg.create()
+
         >>> mesh = lg.createpts("xyz", npts, mins, maxs, "hex", connect=False)
-        >>> rayend = mesh.pset_geom_xyz(mins, maxs, ctr=(5, 5, 5))
+        >>> rayend = mesh.pset_geom(mins, maxs, ctr=(5, 5, 5), geom="xyz")
         >>> mesh.rmpoint_compress(filter_bool=True)
         >>> eighth = mesh.surface_box(mins, (5, 5, 5))
-        >>> boolstr2 = "gt " + eighth.name
+        >>> boolstr2 = f"gt {eighth.name}"
         >>> reg2 = mesh.region(boolstr2)
-        >>> mesh.regnpts_xyz(pts, reg2, 1000, stride=rayend)
+        >>> mesh.regnpts("xyz", pts, reg2, 1000, stride=rayend)
+
+        >>> lg.close()
 
         """
-        cmd = ["regnpts", region.name, ptdist]
+        cmd = ["regnpts", region.name, str(ptdist)]
 
         if isinstance(stride, PSet):
             cmd.append(f"pset get {stride.name}")
@@ -4450,20 +4485,22 @@ class MO:
         Examples
         --------
         >>> import pylagrit
-        >>>
         >>> lg = pylagrit.PyLaGriT()
+
         >>> mesh = lg.create()
         >>> mins = (0, 0, 0)
         >>> maxs = (5, 5, 5)
         >>> eighth = mesh.surface_box(mins, maxs)
-        >>> boolstr1 = "le " + eighth.name
-        >>> boolstr2 = "gt " + eighth.name
+        >>> boolstr1 = f"le {eighth.name}"
+        >>> boolstr2 = f"gt {eighth.name}"
         >>> reg1 = mesh.region(boolstr1)
         >>> reg2 = mesh.region(boolstr2)
         >>> mreg1 = mesh.mregion(boolstr1)
         >>> mreg2 = mesh.mregion(boolstr2)
         >>> mesh.createpts_brick("xyz", (10, 10, 10), (0, 0, 0), (10, 10, 10))
         >>> mesh.rmregion(reg1)
+
+        >>> lg.close()
 
         """
         if name is None:
@@ -4694,7 +4731,8 @@ class EltSet:
         >>> import pylagrit
         >>> import numpy as np
         >>> import sys
-        >>>
+        >>> lg = pylagrit.PyLaGriT()
+
         >>> df = 0.0005  # Fault half aperture
         >>> lr = 7  # Levels of refinement
         >>> nx = 4  # Number of base mesh blocks in x direction
@@ -4702,38 +4740,39 @@ class EltSet:
         >>> d_base = df * 2 ** (lr + 1)  # Calculated dimension of base block
         >>> w = d_base * nx  # Calculated width of model
         >>> d = d_base * nz  # Calculated depth of model
-        >>>
-        >>> lg = pylagrit.PyLaGriT()
-        >>>
-        >>> # Create discrete fracture mesh
+
+        Create discrete fracture mesh
         >>> dxyz = np.array([d_base, d_base, 0.0])
         >>> mins = np.array([0.0, -d, 0.0])
         >>> maxs = np.array([w, 0, 0])
         >>> mqua = lg.createpts_dxyz(
-        ...     dxyz, mins, maxs, "quad", hard_bound=("min", "max", "min"), connect=True
+        ...     dxyz, mins, maxs, "qua", hard_bound=("min", "max", "min"), connect=True
         ... )
-        >>>
+
         >>> for i in range(lr):
-        >>>     prefine = mqua.pset_geom_xyz(mins-0.1,(0.0001,0.1,0))
-        >>>     erefine = prefine.eltset()
-        >>>     erefine.refine()
-        >>>     prefine.delete()
-        >>>     erefine.delete()
-        >>>
+        ...     prefine = mqua.pset_geom("xyz", mins-0.1,(0.0001,0.1,0))
+        ...     erefine = prefine.eltset()
+        ...     erefine.refine()
+        ...     prefine.delete()
+        ...     erefine.delete()
         >>> mtri = mqua.copypts("triplane")
         >>> mtri.connect()
-        >>> # Make sure that not nodes are lost during connect
-        >>> if 'The mesh is complete but could not include all points.' in lg.before:
-        ...     print 'Error: Lost some points during connect, not completing mesh and exiting workflow!'
-        ...     print ''
-        ...     sys.exit()
+
+
+        # Make sure that not nodes are lost during connect
+        # >>> if "The mesh is complete but could not include all points." in lg.before:
+        # ...     print("Error: Lost some points during connect, not completing mesh and exiting workflow!")
+        # ...     sys.exit()
+
         >>> mtri.tri_mesh_output_prep()
         >>> mtri.reorder_nodes(cycle="xic yic zic")
-        >>> pfault = mtri.pset_geom_xyz(mins - 0.1, (0.0001, 0.1, 0))
-        >>> psource = mtri.pset_geom_xyz(mins - 0.1, mins + 0.0001)
+        >>> pfault = mtri.pset_geom("xyz", mins - 0.1, (0.0001, 0.1, 0))
+        >>> psource = mtri.pset_geom("xyz", mins - 0.1, mins + 0.0001)
         >>> mtri.setatt("imt", 1)
         >>> pfault.setatt("imt", 10)
         >>> psource.setatt("imt", 20)
+
+        >>> lg.close()
 
         """
         cmd = "/".join(["refine", "eltset", f"eltset,get,{self}"])

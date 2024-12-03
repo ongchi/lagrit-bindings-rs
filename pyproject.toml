@@ -16,3 +16,7 @@ dynamic = ["version"]
 python-source = "python"
 python-packages = ["pylagrit"]
 features = ["pyo3/extension-module"]
+
+[tool.pytest.ini_options]
+doctest_optionflags = "ELLIPSIS | NORMALIZE_WHITESPACE | IGNORE_EXCEPTION_DETAIL | ALLOW_UNICODE"
+testpaths = ["python/tests"]

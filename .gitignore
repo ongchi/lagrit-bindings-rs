@@ -71,4 +71,6 @@ docs/_build/
 # Pyenv
 .python-version
 
+# Test output
 examples/*_output/
+python/tests/pytest_output
