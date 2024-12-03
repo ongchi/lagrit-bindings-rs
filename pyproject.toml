@@ -11,6 +11,11 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dynamic = ["version"]
+dependencies = ["numpy", "pyvista"]
+
+[project.optional-dependencies]
+pflotran = ["h5py"]
+dev = ["pytest"]
 
 [tool.maturin]
 python-source = "python"
