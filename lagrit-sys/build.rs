@@ -29,6 +29,7 @@ fn main() {
     let bindings = bindgen::Builder::default()
         .clang_arg(format!("-I{}", "vendor/lagrit/src"))
         .header("src/bindings.h")
+        .allowlist_function("fc_.*")
         .generate()
         .expect("Unable to generate bindings.");
 
@@ -45,8 +46,11 @@ fn main() {
     println!("cargo:rustc-link-lib=static=lagrit-bindings");
     println!("cargo:rustc-link-lib=gfortran");
     println!("cargo:rustc-link-lib=c");
-    println!("cargo:rustc-link-lib=c++");
     println!("cargo:rustc-link-lib=stdc++");
+
+    if cfg!(target_os = "macos") {
+        println!("cargo:rustc-link-lib=c++");
+    }
 
     if cfg!(feature = "exodus") {
         println!(
