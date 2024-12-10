@@ -1,14 +1,17 @@
-pure function convert_cstr(cstr) result(fstr)
+! Convert C strings to Fortran strings
+pure function fstr(cstr)
    use iso_c_binding
    implicit none
 
    character(len=1, kind=c_char), intent(in) :: cstr(*)
-   character(len=256) :: fstr
+
+   ! Most of strings in LaGriT are 32 characters long
+   character(len=32) :: fstr
    integer :: i
 
    fstr = ""
 
-   do i = 1, 256
+   do i = 1, 32
       if (cstr(i) == c_null_char) then
          exit
       end if
@@ -16,13 +19,47 @@ pure function convert_cstr(cstr) result(fstr)
    end do
 
    return
-end function convert_cstr
+end function fstr
 
+! Get the length of a C string
+subroutine c_str_len(cstr, len)
+   use iso_c_binding
+   implicit none
+
+   character(len=1, kind=c_char), intent(in) :: cstr(*)
+   integer, intent(out) :: len
+
+   len = 0
+   do
+      if (cstr(len + 1) == c_null_char) then
+         exit
+      end if
+      len = len + 1
+   end do
+
+end subroutine c_str_len
+
+! Convert C strings to Fortran strings
+subroutine convert_cstr(cstr, fstr)
+   use iso_c_binding
+   implicit none
+
+   character(len=1, kind=c_char), intent(in) :: cstr(*)
+   character(*), intent(out) :: fstr
+   integer :: i
+
+   do i = 1, len(fstr)
+      fstr(i:i) = cstr(i)
+   end do
+
+end subroutine convert_cstr
+
+! Convert Fortran strings to C strings
 subroutine convert_fstr(fstr, cstr)
    use iso_c_binding
    implicit none
 
-   character(*) :: fstr
+   character(*), intent(in) :: fstr
    character(len=1, kind=c_char), intent(inout) :: cstr(*)
 
    integer :: i, n
@@ -48,12 +85,10 @@ subroutine fc_initlagrit(mode, log_file, batch_file) bind(c)
    integer(c_int32_t), intent(in) :: mode
    character(len=1, kind=c_char), intent(in) :: log_file(*), batch_file(*)
 
-   character(len=8) :: mode_str
-
    ! general function
-   character(len=256) :: convert_cstr
+   character(len=32) :: fstr
 
-   character(len=256) :: f_log_file, f_batch_file
+   character(len=8) :: mode_str
 
    if (mode == 0) then
       mode_str = 'silent'
@@ -61,9 +96,7 @@ subroutine fc_initlagrit(mode, log_file, batch_file) bind(c)
       mode_str = 'noisy'
    end if
 
-   f_log_file = convert_cstr(log_file)
-   f_batch_file = convert_cstr(batch_file)
-   call initlagrit(mode_str, f_log_file, f_batch_file)
+   call initlagrit(mode_str, trim(fstr(log_file)), trim(fstr(batch_file)))
 
 end subroutine fc_initlagrit
 
@@ -74,12 +107,12 @@ subroutine fc_fflush_and_sync(file) bind(c)
    character(len=1, kind=c_char), intent(in) :: file(*)
 
    ! general function
-   character(len=256) :: convert_cstr
+   character(len=32) :: fstr
    integer(c_int) :: fsync
 
    integer :: fid, fsync_ret
 
-   inquire (file=trim(convert_cstr(file)), number=fid)
+   inquire (file=trim(fstr(file)), number=fid)
    flush (fid)
    fsync_ret = fsync(fnum(fid))
 
@@ -92,11 +125,11 @@ subroutine fc_fclose(file) bind(c)
    character(len=1, kind=c_char), intent(in) :: file(*)
 
    ! general function
-   character(len=256) :: convert_cstr
+   character(len=32) :: fstr
 
    integer :: fid
 
-   inquire (file=trim(convert_cstr(file)), number=fid)
+   inquire (file=trim(fstr(file)), number=fid)
    close (fid)
 
 end subroutine fc_fclose
@@ -108,10 +141,16 @@ subroutine fc_dotask(cmd, status) bind(c)
    character(len=1, kind=c_char), intent(in) :: cmd
    integer(c_int32_t), intent(inout) :: status
 
-   ! general function
-   character(len=256) :: convert_cstr
+   integer :: str_len
+   character(len=:), allocatable :: f_cmd
 
-   call dotask(trim(convert_cstr(cmd))//'; finish', status)
+   ! Because of the length of the cmd string varies.
+   ! We do not call fstr(cmd) directly.
+   call c_str_len(cmd, str_len)
+   allocate (character(str_len) :: f_cmd)
+   call convert_cstr(cmd, f_cmd)
+
+   call dotask(f_cmd//";finish", status)
 
 end subroutine fc_dotask
 
@@ -122,13 +161,13 @@ subroutine fc_attr_len(aname, pname, arr_len, status) bind(c)
    character(len=1, kind=c_char), intent(in) :: aname(*), pname(*)
    integer(c_int32_t), intent(inout) :: arr_len, status
 
+   ! general function
+   character(len=32) :: fstr
+
    pointer(ptr, buffer)
    integer(c_int8_t) :: buffer(*)
 
-   ! general function
-   character(len=256) :: convert_cstr
-
-   call mmfindbk(convert_cstr(aname), convert_cstr(pname), ptr, arr_len, status)
+   call mmfindbk(fstr(aname), fstr(pname), ptr, arr_len, status)
 
 end subroutine fc_attr_len
 
@@ -140,9 +179,9 @@ subroutine fc_mmrelprt(pname, status) bind(c)
    integer(c_int32_t), intent(inout) :: status
 
    ! general function
-   character(len=256) :: convert_cstr
+   character(len=32) :: fstr
 
-   call mmrelprt(convert_cstr(pname), status)
+   call mmrelprt(fstr(pname), status)
 
 end subroutine fc_mmrelprt
 
@@ -160,9 +199,9 @@ subroutine fc_mmfindbk(byte_len, cell_len, aname, pname, aptr, arr_len, status) 
    integer :: i
 
    ! general function
-   character(len=256) :: convert_cstr
+   character(len=32) :: fstr
 
-   call mmfindbk(convert_cstr(aname), convert_cstr(pname), ptr, arr_len, status)
+   call mmfindbk(fstr(aname), fstr(pname), ptr, arr_len, status)
 
    do i = 1, int(byte_len)*int(cell_len)*int(arr_len)
       aptr(i) = buffer(i)
@@ -178,9 +217,9 @@ subroutine fc_cmo_get_index(cmo_name, idx, status) bind(c)
    integer(c_int32_t), intent(inout) :: idx, status
 
    ! general function
-   character(len=256) :: convert_cstr
+   character(len=32) :: fstr
 
-   call cmo_get_index(convert_cstr(cmo_name), idx, status)
+   call cmo_get_index(fstr(cmo_name), idx, status)
 
 end subroutine fc_cmo_get_index
 
@@ -207,11 +246,11 @@ subroutine fc_cmo_get_mesh_type(cmo_name, mesh_type, imesh_type, status) bind(c)
    integer(c_int32_t), intent(inout) :: imesh_type, status
 
    ! general function
-   character(len=256) :: convert_cstr
+   character(len=32) :: fstr
 
    character(len=32) :: tmp
 
-   call cmo_get_mesh_type(convert_cstr(cmo_name), tmp, imesh_type, status)
+   call cmo_get_mesh_type(fstr(cmo_name), tmp, imesh_type, status)
    call convert_fstr(tmp, mesh_type)
 
 end subroutine fc_cmo_get_mesh_type
