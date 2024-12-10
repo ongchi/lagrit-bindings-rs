@@ -1,3 +1,4 @@
+import logging
 from collections import defaultdict
 from itertools import product
 import xml.etree.ElementTree as ET
@@ -43,8 +44,6 @@ def new_name(base, names):
     return name
 
 
-# TODO: LaGriT does no alwasy returns an error when something goes wrong.
-#       Find error messages in output file or stdout to capture all errors.
 class PyLaGriT:
     """
     Python lagrit class
@@ -64,14 +63,26 @@ class PyLaGriT:
 
     def __init__(
         self,
-        mode: Literal["slient", "noisy"] = "noisy",
         log_file: str = "lagrit.log",
         out_file: str = "lagrit.out",
+        logging_level: int = logging.WARNING,
     ):
-        self.core = LaGriT(mode, log_file, out_file)
+        self.core = LaGriT("slient", log_file, out_file)
+        logging.basicConfig(level=logging_level, format="%(message)s")
+
+    def set_logging_level(self, level: int):
+        logger = logging.getLogger()
+        logger.setLevel(level)
 
     def sendcmd(self, cmd: str):
         self.core.sendcmd(cmd)
+        for line in self.before.splitlines():
+            if "WARNING" in line:
+                logging.warning(line)
+            elif "ERROR" in line:
+                logging.error(line)
+            else:
+                logging.debug(line)
 
     def close(self):
         self.core.close()
