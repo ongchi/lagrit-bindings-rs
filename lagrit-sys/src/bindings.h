@@ -21,3 +21,4 @@ extern void fc_cmo_get_index(const char *cmo_name, int32_t *idx,
 extern void fc_cmo_get_name(const char *cmo_name, int32_t *status);
 extern void fc_cmo_get_mesh_type(const char *cmo_name, const char *mesh_type,
                                  int32_t *imesh_type, int32_t *status);
+extern void fc_control_command_lg(int32_t *status);

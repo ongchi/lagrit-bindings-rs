@@ -60,3 +60,9 @@ then build the bindings with exodus feature.
 ```bash
 maturin build --release --features exodus
 ```
+
+### Install LaGriT Binary Executable
+
+```bash
+cargo install --example lagrit --features=clap,exodus --path .
+```

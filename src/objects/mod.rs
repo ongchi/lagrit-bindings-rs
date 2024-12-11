@@ -6,6 +6,8 @@ pub use mo::MeshObject;
 
 use crate::error::LagritError;
 
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 pub enum InitMode {
     Slient,
     Noisy,

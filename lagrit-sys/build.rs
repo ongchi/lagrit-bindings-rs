@@ -67,5 +67,6 @@ fn main() {
         println!("cargo:rustc-link-lib=static=netcdf");
         println!("cargo:rustc-link-lib=static=hdf5");
         println!("cargo:rustc-link-lib=static=hdf5_hl");
+        println!("cargo:rustc-link-lib=static=z");
     }
 }

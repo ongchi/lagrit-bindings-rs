@@ -254,3 +254,13 @@ subroutine fc_cmo_get_mesh_type(cmo_name, mesh_type, imesh_type, status) bind(c)
    call convert_fstr(tmp, mesh_type)
 
 end subroutine fc_cmo_get_mesh_type
+
+subroutine fc_control_command_lg(status) bind(c)
+   use iso_c_binding
+   implicit none
+
+   integer(c_int32_t), intent(inout) :: status
+
+   call control_command_lg(status)
+
+end subroutine fc_control_command_lg
