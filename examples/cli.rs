@@ -15,7 +15,12 @@ struct Opts {
 fn main() -> Result<(), LagritError> {
     let cli_opts: Opts = Opts::parse();
 
-    LaGriT::new(cli_opts.mode, Some(&cli_opts.log), Some(&cli_opts.out))?;
+    LaGriT::new(
+        cli_opts.mode,
+        Some(&cli_opts.log),
+        Some(&cli_opts.out),
+        None,
+    )?;
 
     let mut status: i32 = 0;
     unsafe { fc_control_command_lg(&mut status) };

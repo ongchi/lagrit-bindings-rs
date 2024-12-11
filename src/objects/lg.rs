@@ -2,6 +2,7 @@ use std::{
     ffi::CString,
     fs::File,
     io::{BufReader, Read, Seek, SeekFrom},
+    path::PathBuf,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, OnceLock, RwLock,
@@ -14,6 +15,7 @@ use super::{InitMode, MeshObject};
 use crate::{
     error::LagritError,
     ffi::{cmo_get_name, dotask, initlagrit, mmfindbk_string, mmrelprt},
+    utils::Pushd,
 };
 
 static LAGRIT: OnceLock<Arc<LaGriT>> = OnceLock::new();
@@ -22,6 +24,7 @@ pub struct LaGriT {
     is_initialized: AtomicBool,
     log_file: RwLock<String>,
     batch_file: RwLock<String>,
+    workdir: RwLock<PathBuf>,
     cmd_msg: RwLock<String>,
     msg_last_pos: AtomicUsize,
 }
@@ -31,12 +34,14 @@ impl LaGriT {
         mode: InitMode,
         log_file: Option<&str>,
         batch_file: Option<&str>,
+        workdir: Option<&str>,
     ) -> Result<Arc<Self>, LagritError> {
         let lg = LAGRIT.get_or_init(|| {
             Arc::new(Self {
                 is_initialized: AtomicBool::new(false),
                 log_file: RwLock::new(String::with_capacity(64)),
                 batch_file: RwLock::new(String::with_capacity(64)),
+                workdir: RwLock::new(PathBuf::new()),
                 cmd_msg: RwLock::new(String::new()),
                 msg_last_pos: AtomicUsize::new(0),
             })
@@ -46,11 +51,20 @@ impl LaGriT {
             return Err(LagritError::AlreadyInitialized);
         }
 
+        // Clear last command message
         lg.cmd_msg
             .write()
             .map(|mut s| s.clear())
             .map_err(|_| LagritError::RwLockPoisoned)?;
         lg.msg_last_pos.store(0, Ordering::Relaxed);
+
+        let workdir = if let Some(d) = workdir {
+            PathBuf::from(d)
+        } else {
+            std::env::current_dir()?
+        };
+
+        let d = Pushd::new(&workdir)?;
 
         let log_file = log_file.unwrap_or("lagrit.log");
         let batch_file = batch_file.unwrap_or("lagrit.out");
@@ -78,7 +92,13 @@ impl LaGriT {
                 s.push_str(batch_file);
             })
             .map_err(|_| LagritError::RwLockPoisoned)?;
+        lg.workdir
+            .write()
+            .map(|mut p| *p = workdir)
+            .map_err(|_| LagritError::RwLockPoisoned)?;
         lg.update_message()?;
+
+        d.pop()?;
 
         Ok(lg.clone())
     }
@@ -123,8 +143,17 @@ impl LaGriT {
     }
 
     pub fn sendcmd(&self, cmd: &str) -> Result<(), LagritError> {
+        let workdir = self
+            .workdir
+            .read()
+            .map_err(|_| LagritError::RwLockPoisoned)?
+            .clone();
+        let d = Pushd::new(&workdir)?;
+
         dotask(cmd)?;
         self.update_message()?;
+
+        d.pop()?;
 
         Ok(())
     }
@@ -192,10 +221,19 @@ impl LaGriT {
                 .clone(),
         )?;
 
+        let workdir = self
+            .workdir
+            .read()
+            .map_err(|_| LagritError::RwLockPoisoned)?
+            .clone();
+        let d = Pushd::new(workdir)?;
+
         unsafe {
             fc_fclose(log_file.as_ptr());
             fc_fclose(batch_file.as_ptr());
         }
+
+        d.pop()?;
 
         self.mo_names()
             .unwrap_or_else(|_| vec![])

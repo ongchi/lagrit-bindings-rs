@@ -67,10 +67,15 @@ pub struct PyLaGriT {
 #[pymethods]
 impl PyLaGriT {
     #[new]
-    #[pyo3(signature = (mode, log_file=None, batch_file=None))]
-    fn new(mode: &str, log_file: Option<&str>, batch_file: Option<&str>) -> PyResult<Self> {
+    #[pyo3(signature = (mode, log_file=None, batch_file=None, workdir=None))]
+    fn new(
+        mode: &str,
+        log_file: Option<&str>,
+        batch_file: Option<&str>,
+        workdir: Option<&str>,
+    ) -> PyResult<Self> {
         Ok(Self {
-            lagrit: LaGriT::new(mode.parse()?, log_file, batch_file)?,
+            lagrit: LaGriT::new(mode.parse()?, log_file, batch_file, workdir)?,
         })
     }
 

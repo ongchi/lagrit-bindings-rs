@@ -66,8 +66,9 @@ class PyLaGriT:
         log_file: str = "lagrit.log",
         out_file: str = "lagrit.out",
         logging_level: int = logging.WARNING,
+        workdir: Optional[str] = None,
     ):
-        self.core = LaGriT("slient", log_file, out_file)
+        self.core = LaGriT("slient", log_file, out_file, workdir)
         logging.basicConfig(level=logging_level, format="%(message)s")
 
     def set_logging_level(self, level: int):
