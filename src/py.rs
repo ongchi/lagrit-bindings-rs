@@ -5,8 +5,7 @@ use pyo3::prelude::*;
 use pyo3::{create_exception, PyErr};
 
 pub use crate::error::LagritError;
-pub use crate::obj::AttrValue;
-use crate::obj::{LaGriT, MeshObject};
+use crate::objects::{AttrValue, LaGriT, MeshObject};
 
 create_exception!(pylagrit, PyLagritError, PyException);
 

@@ -3,7 +3,7 @@ use std::ffi::CString;
 const STR_BUF_LEN: usize = 32;
 
 use crate::error::LagritError;
-use crate::obj::AttrValue;
+use crate::objects::AttrValue;
 use lagrit_sys::{
     fc_attr_len, fc_cmo_get_index, fc_cmo_get_mesh_type, fc_cmo_get_name, fc_dotask, fc_initlagrit,
     fc_mmfindbk, fc_mmrelprt,

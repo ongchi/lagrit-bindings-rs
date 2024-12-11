@@ -10,26 +10,13 @@ use std::{
 
 use lagrit_sys::{fc_fclose, fc_fflush_and_sync};
 
+use super::{InitMode, MeshObject};
 use crate::{
     error::LagritError,
-    ffi::{
-        cmo_attlist, cmo_get_info, cmo_get_mesh_type, cmo_get_name, dotask, initlagrit,
-        mmfindbk_string, mmrelprt,
-    },
+    ffi::{cmo_get_name, dotask, initlagrit, mmfindbk_string, mmrelprt},
 };
 
 static LAGRIT: OnceLock<Arc<LaGriT>> = OnceLock::new();
-
-#[derive(Debug)]
-#[cfg_attr(feature = "pyo3", derive(pyo3::IntoPyObject))]
-pub enum AttrValue {
-    Int(i64),
-    Vint(Vec<i64>),
-    Real(f64),
-    Vdouble(Vec<f64>),
-    Character(String),
-    Vchar(Vec<String>),
-}
 
 pub struct LaGriT {
     is_initialized: AtomicBool,
@@ -37,27 +24,6 @@ pub struct LaGriT {
     batch_file: RwLock<String>,
     cmd_msg: RwLock<String>,
     msg_last_pos: AtomicUsize,
-}
-
-pub struct MeshObject {
-    name: String,
-}
-
-pub enum InitMode {
-    Slient,
-    Noisy,
-}
-
-impl std::str::FromStr for InitMode {
-    type Err = LagritError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "slient" => Ok(Self::Slient),
-            "noisy" => Ok(Self::Noisy),
-            _ => Err(LagritError::InvalidInitMode),
-        }
-    }
 }
 
 impl LaGriT {
@@ -247,54 +213,5 @@ impl LaGriT {
         self.is_initialized.store(false, Ordering::Relaxed);
 
         Ok(())
-    }
-}
-
-impl MeshObject {
-    pub fn new(name: &str) -> Self {
-        Self {
-            name: name.to_string(),
-        }
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn status(&self) -> Result<(), LagritError> {
-        dotask(&format!("cmo/status/{}", self.name))
-    }
-
-    pub fn mesh_type(&self) -> Result<(String, i32), LagritError> {
-        cmo_get_mesh_type(&self.name)
-    }
-
-    pub fn attr(&self, attr: &str) -> Result<AttrValue, LagritError> {
-        cmo_get_info(attr, &self.name)
-    }
-
-    pub fn attr_list(&self) -> Result<Vec<Vec<String>>, LagritError> {
-        cmo_attlist(&self.name)
-    }
-
-    pub fn pset_names(&self) -> Result<Vec<String>, LagritError> {
-        Ok(mmfindbk_string("psetnames", &self.name)?
-            .into_iter()
-            .filter(|c| !c.is_empty())
-            .collect())
-    }
-
-    pub fn fset_names(&self) -> Result<Vec<String>, LagritError> {
-        Ok(mmfindbk_string("fsetnames", &self.name)?
-            .into_iter()
-            .filter(|c| !c.is_empty())
-            .collect())
-    }
-
-    pub fn eltset_names(&self) -> Result<Vec<String>, LagritError> {
-        Ok(mmfindbk_string("eltsetnames", &self.name)?
-            .into_iter()
-            .filter(|c| !c.is_empty())
-            .collect())
     }
 }

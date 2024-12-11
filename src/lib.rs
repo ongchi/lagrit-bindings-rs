@@ -1,9 +1,9 @@
 pub mod error;
 pub mod ffi;
-pub mod obj;
+pub mod objects;
 
 pub use error::LagritError;
-pub use obj::{InitMode, LaGriT, MeshObject};
+pub use objects::{lg::LaGriT, mo::MeshObject, InitMode};
 
 #[cfg(feature = "pyo3")]
 pub mod py;
