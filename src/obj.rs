@@ -48,6 +48,18 @@ pub enum InitMode {
     Noisy,
 }
 
+impl std::str::FromStr for InitMode {
+    type Err = LagritError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "slient" => Ok(Self::Slient),
+            "noisy" => Ok(Self::Noisy),
+            _ => Err(LagritError::InvalidInitMode),
+        }
+    }
+}
+
 impl LaGriT {
     pub fn new(
         mode: InitMode,

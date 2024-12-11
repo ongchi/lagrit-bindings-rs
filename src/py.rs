@@ -6,7 +6,7 @@ use pyo3::{create_exception, PyErr};
 
 pub use crate::error::LagritError;
 pub use crate::obj::AttrValue;
-use crate::obj::{InitMode, LaGriT, MeshObject};
+use crate::obj::{LaGriT, MeshObject};
 
 create_exception!(pylagrit, PyLagritError, PyException);
 
@@ -70,14 +70,8 @@ impl PyLaGriT {
     #[new]
     #[pyo3(signature = (mode, log_file=None, batch_file=None))]
     fn new(mode: &str, log_file: Option<&str>, batch_file: Option<&str>) -> PyResult<Self> {
-        let mode = mode.to_lowercase();
-        let mode = match mode.as_str() {
-            "slient" => InitMode::Slient,
-            "noisy" => InitMode::Noisy,
-            _ => return Err(PyLagritError::new_err("".to_string())),
-        };
         Ok(Self {
-            lagrit: LaGriT::new(mode, log_file, batch_file)?,
+            lagrit: LaGriT::new(mode.parse()?, log_file, batch_file)?,
         })
     }
 

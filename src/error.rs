@@ -1,5 +1,7 @@
 #[derive(thiserror::Error, Debug)]
 pub enum LagritError {
+    #[error("Invalid initialization mode")]
+    InvalidInitMode,
     #[error("LaGriT is already initialized")]
     AlreadyInitialized,
     #[error("LaGriT is not initialized")]
