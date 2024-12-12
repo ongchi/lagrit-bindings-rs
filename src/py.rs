@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
+use pyo3::types::{PyFloat, PyInt};
 use pyo3::{create_exception, PyErr};
 
 pub use crate::error::LagritError;
@@ -12,6 +13,21 @@ create_exception!(pylagrit, PyLagritError, PyException);
 impl From<LagritError> for PyErr {
     fn from(e: LagritError) -> Self {
         PyLagritError::new_err(e.to_string())
+    }
+}
+
+impl<'py> FromPyObject<'py> for AttrValue {
+    fn extract_bound(obj: &Bound<'py, PyAny>) -> PyResult<Self> {
+        if obj.downcast::<PyInt>().is_ok() {
+            Ok(AttrValue::Int(obj.extract()?))
+        } else if obj.downcast::<PyFloat>().is_ok() {
+            Ok(AttrValue::Real(obj.extract()?))
+        } else {
+            match obj.extract::<Vec<i64>>() {
+                Ok(v) => Ok(AttrValue::Vint(v)),
+                Err(_) => Ok(AttrValue::Vdouble(obj.extract()?)),
+            }
+        }
     }
 }
 
@@ -44,6 +60,10 @@ impl PyMeshObject {
 
     fn attr(&self, attr: &str) -> PyResult<AttrValue> {
         self.mesh_object.attr(attr).map_err(|e| e.into())
+    }
+
+    fn set_attr(&self, attr: &str, value: AttrValue) -> PyResult<()> {
+        self.mesh_object.set_attr(attr, value).map_err(|e| e.into())
     }
 
     fn attr_list(&self) -> PyResult<Vec<Vec<String>>> {

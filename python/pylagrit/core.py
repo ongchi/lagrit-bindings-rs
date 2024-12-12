@@ -1409,6 +1409,12 @@ class MO:
     ) -> int | List[int] | float | List[float] | str | List[str]:
         return self.obj.attr(attr)
 
+    def set_attr(self, attr: str, value: int | float | List[int] | List[float]):
+        if isinstance(value, (int, float)):
+            self.lg.sendcmd(f"cmo/setatt/{self.name}/{attr}/{value}")
+        else:
+            self.obj.set_attr(attr, value)
+
     @property
     def psets(self) -> List["PSet"]:
         return [PSet(k, self) for k in self.obj.pset_names()]

@@ -16,6 +16,16 @@ pub enum LagritError {
     ZeroLengthResult,
     #[error("Mesh object not found")]
     MeshObjectNotFound,
+    #[error("Attribute not found")]
+    AttributeNotFound,
+    #[error("Unexpected attribute length: {0}")]
+    UnexpectLengthValue(String),
+    #[error("Unsupported data type")]
+    UnsupportedDataType,
+    #[error("Invalid value length")]
+    InvalidValueLength,
+    #[error("Invalid value type")]
+    InvalidValueType,
     #[error("Error code: {0}")]
     Code(i32),
     #[error(transparent)]

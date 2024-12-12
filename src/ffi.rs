@@ -6,7 +6,7 @@ use crate::error::LagritError;
 use crate::objects::AttrValue;
 use lagrit_sys::{
     fc_attr_len, fc_cmo_get_index, fc_cmo_get_mesh_type, fc_cmo_get_name, fc_dotask, fc_initlagrit,
-    fc_mmfindbk, fc_mmrelprt,
+    fc_mmfindbk, fc_mmrelprt, fc_set_fattr, fc_set_iattr,
 };
 
 pub fn initlagrit(mode: i32, log_file: &str, batch_file: &str) -> Result<(), LagritError> {
@@ -232,4 +232,84 @@ pub fn cmo_get_info(option: &str, mo: &str) -> Result<AttrValue, LagritError> {
     }
 
     Err(LagritError::Unknown)
+}
+
+pub fn cmo_set_info(option: &str, mo: &str, value: AttrValue) -> Result<(), LagritError> {
+    let attr = match option {
+        "imt" => "imt1",
+        "icr" => "icr1",
+        "itp" => "itp1",
+        "isn" => "isn1",
+        _ => option,
+    };
+
+    let attr_info = cmo_attlist(mo)?;
+    let (attr_type, attr_len) = attr_info
+        .iter()
+        .find(|info| info[0] == attr)
+        .map(|info| (&info[1], &info[3]))
+        .ok_or(LagritError::AttributeNotFound)?;
+
+    let attr_len = match attr_len.as_str() {
+        "scalar" => 0,
+        "nnodes" => match cmo_get_info("nnodes", mo)? {
+            AttrValue::Int(v) => v,
+            _ => return Err(LagritError::Unknown),
+        },
+        "nelements" => match cmo_get_info("nelements", mo)? {
+            AttrValue::Int(v) => v,
+            _ => return Err(LagritError::Unknown),
+        },
+        _ => return Err(LagritError::UnexpectLengthValue(attr_len.to_string())),
+    };
+
+    let attr = CString::new(attr)?;
+    let mo = CString::new(mo)?;
+
+    let mut status = 0;
+
+    match value {
+        AttrValue::Vint(mut v) => unsafe {
+            if attr_type != "VINT" {
+                return Err(LagritError::InvalidValueType);
+            }
+            let mut len = v.len() as i64;
+            if len != attr_len {
+                return Err(LagritError::InvalidValueLength);
+            }
+            fc_set_iattr(
+                attr.as_ptr(),
+                mo.as_ptr(),
+                v.as_mut_ptr(),
+                &mut len,
+                &mut status,
+            );
+        },
+        AttrValue::Vdouble(mut v) => unsafe {
+            if attr_type != "VDOUBLE" {
+                return Err(LagritError::InvalidValueType);
+            }
+            let mut len = v.len() as i64;
+            if len != attr_len {
+                return Err(LagritError::InvalidValueLength);
+            }
+
+            fc_set_fattr(
+                attr.as_ptr(),
+                mo.as_ptr(),
+                v.as_mut_ptr(),
+                &mut len,
+                &mut status,
+            );
+        },
+        _ => {
+            return Err(LagritError::UnsupportedDataType);
+        }
+    }
+
+    if status != 0 {
+        return Err(status.into());
+    }
+
+    Ok(())
 }
