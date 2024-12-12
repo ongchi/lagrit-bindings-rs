@@ -264,3 +264,53 @@ subroutine fc_control_command_lg(status) bind(c)
    call control_command_lg(status)
 
 end subroutine fc_control_command_lg
+
+subroutine fc_set_iattr(attr, cmo_name, data, data_len, status) bind(c)
+   ! This subroutine does not check the type of the attribute when writing to buffer.
+   use iso_c_binding
+   use iso_fortran_env
+   implicit none
+
+   character(len=1, kind=c_char), intent(in) :: attr(*), cmo_name(*)
+   integer(c_int64_t), intent(in) :: data(*), data_len
+   integer(c_int32_t), intent(inout) :: status
+
+   ! general function
+   character(len=32) :: fstr
+
+   integer(int64) :: i, attr_len, itype, buffer(*)
+   pointer(ipattr, buffer)
+
+   call cmo_get_info(fstr(attr), fstr(cmo_name), ipattr, attr_len, itype, status)
+
+   do i = 1, data_len
+      buffer(i) = data(i)
+   end do
+
+end subroutine fc_set_iattr
+
+subroutine fc_set_fattr(attr, cmo_name, data, data_len, status) bind(c)
+   ! This subroutine does not check the type of the attribute when writing to buffer.
+   use iso_c_binding
+   use iso_fortran_env
+   implicit none
+
+   character(len=1, kind=c_char), intent(in) :: attr(*), cmo_name(*)
+   real(c_double), intent(in) :: data(*)
+   integer(c_int64_t), intent(in) :: data_len
+   integer(c_int32_t), intent(inout) :: status
+
+   ! general function
+   character(len=32) :: fstr
+
+   integer(int64) :: i, attr_len, itype
+   real(real64) :: buffer(*)
+   pointer(ipattr, buffer)
+
+   call cmo_get_info(fstr(attr), fstr(cmo_name), ipattr, attr_len, itype, status)
+
+   do i = 1, data_len
+      buffer(i) = data(i)
+   end do
+
+end subroutine fc_set_fattr

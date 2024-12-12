@@ -22,3 +22,7 @@ extern void fc_cmo_get_name(const char *cmo_name, int32_t *status);
 extern void fc_cmo_get_mesh_type(const char *cmo_name, const char *mesh_type,
                                  int32_t *imesh_type, int32_t *status);
 extern void fc_control_command_lg(int32_t *status);
+extern void fc_set_iattr(const char *attr, const char *cmo_name, int64_t *data,
+                         int64_t *data_len, int32_t *status);
+extern void fc_set_fattr(const char *attr, const char *cmo_name, double *data,
+                         int64_t *data_len, int32_t *status);
