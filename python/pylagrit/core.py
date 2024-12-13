@@ -28,11 +28,18 @@ from pylagrit.cell_type_maps import (
     CELL_NODE_NUMBERS,
     NODES_FOR_FACE,
     PF_CELL_TYPE_MAP,
-    VTK_CELL_TYPE_MAP,
+    lg_to_vtk_celltypes,
+    pv_ug_to_lg,
 )
 
 DType = TypeVar("DType", bound=np.generic)
 Points = Annotated[npt.NDArray[DType], Literal["N", 3]]
+
+IntType = TypeVar("IntType", bound=np.integer)
+IntArray = Annotated[npt.NDArray[IntType], Literal["N"]]
+
+FloatType = TypeVar("FloatType", bound=np.float64)
+FloatArray = Annotated[npt.NDArray[FloatType], Literal["N"]]
 
 
 def new_name(base, names):
@@ -354,6 +361,51 @@ class PyLaGriT:
         self.sendcmd("/".join(cmd))
 
         return MO(name, self)
+
+    def from_pv(self, mesh: pv.UnstructuredGrid) -> "MO":
+        """
+        Create Mesho Object from pyvista.UnstructuredGrid
+        """
+        meshdata = pv_ug_to_lg(mesh)
+
+        mo = self.create()
+
+        mo.select()
+
+        mo._set_attr("nnodes", meshdata.nnodes)
+        mo._set_attr("nelements", meshdata.nelements)
+        mo._set_attr("nodes_per_element", meshdata.nodes_per_element)
+
+        self.sendcmd(f"cmo/newlen/{mo.name}")
+
+        mo._set_attr("xic", meshdata.xic)
+        mo._set_attr("yic", meshdata.yic)
+        mo._set_attr("zic", meshdata.zic)
+        mo._set_attr("itet", meshdata.itet)
+        mo._set_attr("itettyp", meshdata.itettyp)
+        mo._set_attr("itetoff", meshdata.itetoff)
+
+        for key, val in mesh.point_data.items():
+            if val.dtype == np.int64:
+                vtype = "vint"
+            elif val.dtype == np.float64:
+                vtype = "vdouble"
+            else:
+                raise ValueError(f"Unsupported data type {val.dtype}")
+            mo.addatt(key, vtype=vtype, rank="scalar", length="nnodes", ioflag="a")
+            mo._set_attr(key, val)
+
+        for key, val in mesh.cell_data.items():
+            if val.dtype == np.int64:
+                vtype = "vint"
+            elif val.dtype == np.float64:
+                vtype = "vdouble"
+            else:
+                raise ValueError(f"Unsupported data type {val.dtype}")
+            mo.addatt(key, vtype=vtype, rank="scalar", length="nelements", ioflag="a")
+            mo._set_attr(key, val)
+
+        return mo
 
     def boundary_components(
         self,
@@ -1409,7 +1461,7 @@ class MO:
     ) -> int | List[int] | float | List[float] | str | List[str]:
         return self.obj.attr(attr)
 
-    def set_attr(self, attr: str, value: int | float | List[int] | List[float]):
+    def _set_attr(self, attr: str, value: int | float | IntArray | FloatArray):
         if isinstance(value, (int, float)):
             self.lg.sendcmd(f"cmo/setatt/{self.name}/{attr}/{value}")
         else:
@@ -2580,9 +2632,7 @@ class MO:
 
     @property
     def vtk_celltypes(self):
-        el_type = np.array(self.attr("itettyp"))
-
-        return VTK_CELL_TYPE_MAP[el_type - 1]
+        return lg_to_vtk_celltypes(cast(List[int], self.attr("itettyp")))
 
     @property
     def cells(self):
