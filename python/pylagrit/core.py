@@ -2178,8 +2178,6 @@ class MO:
 
         >>> mqua = lg.gridder(x, y, z, elem_type="hex", connect=True)
         >>> mqua.rotateln((mqua.attr("xmin") - 0.1, 0, 0), (mqua.attr("xmax") + 0.1, 0, 0), 25)
-        >>> mqua.dump_exo("rotated.exo")
-        >>> mqua.dump_ats_xml("rotated.xml", "rotated.exo")
 
         >>> lg.close()
 
@@ -2219,9 +2217,6 @@ class MO:
         >>> stack_hex = lg.create()
         >>> stack_hex.stack_layers(stack_files, "avs", flip_opt=True)
         >>> stack = stack_hex.stack_fill()
-
-        >>> stack.dump_exo("rotated.exo")
-        >>> stack.dump_ats_xml("rotated.xml", "rotated.exo")
 
         >>> lg.close()
 
@@ -2835,8 +2830,6 @@ class MO:
         ...     connect=True,
         ... )
         >>> fs = mo.create_boundary_facesets(base_name="faceset_bounds")
-
-        >>> mo.dump_exo("cube.exo", facesets=fs.values())
 
         >>> lg.close()
 
