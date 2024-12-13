@@ -244,23 +244,26 @@ pub fn cmo_set_info(option: &str, mo: &str, value: AttrValue) -> Result<(), Lagr
     };
 
     let attr_info = cmo_attlist(mo)?;
-    let (attr_type, attr_len) = attr_info
+    let (attr_type, attr_rank, attr_len) = attr_info
         .iter()
         .find(|info| info[0] == attr)
-        .map(|info| (&info[1], &info[3]))
+        .map(|info| (&info[1], &info[2], &info[3]))
         .ok_or(LagritError::AttributeNotFound)?;
 
+    let attr_rank = match attr_rank.as_str() {
+        "scalar" => 1,
+        lenvar => match cmo_get_info(lenvar, mo)? {
+            AttrValue::Int(v) => v,
+            _ => return Err(LagritError::Unknown),
+        },
+    };
+
     let attr_len = match attr_len.as_str() {
-        "scalar" => 0,
-        "nnodes" => match cmo_get_info("nnodes", mo)? {
+        "scalar" => 1,
+        lenvar => match cmo_get_info(lenvar, mo)? {
             AttrValue::Int(v) => v,
             _ => return Err(LagritError::Unknown),
         },
-        "nelements" => match cmo_get_info("nelements", mo)? {
-            AttrValue::Int(v) => v,
-            _ => return Err(LagritError::Unknown),
-        },
-        _ => return Err(LagritError::UnexpectLengthValue(attr_len.to_string())),
     };
 
     let attr = CString::new(attr)?;
@@ -274,7 +277,7 @@ pub fn cmo_set_info(option: &str, mo: &str, value: AttrValue) -> Result<(), Lagr
                 return Err(LagritError::InvalidValueType);
             }
             let mut len = v.len() as i64;
-            if len != attr_len {
+            if len != attr_rank * attr_len {
                 return Err(LagritError::InvalidValueLength);
             }
             fc_set_iattr(
@@ -290,7 +293,7 @@ pub fn cmo_set_info(option: &str, mo: &str, value: AttrValue) -> Result<(), Lagr
                 return Err(LagritError::InvalidValueType);
             }
             let mut len = v.len() as i64;
-            if len != attr_len {
+            if len != attr_rank * attr_len {
                 return Err(LagritError::InvalidValueLength);
             }
 
