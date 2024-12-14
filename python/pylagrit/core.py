@@ -110,7 +110,7 @@ class PyLaGriT:
 
     def read_mo(
         self,
-        filename: str,
+        filename_or_pv_ugrid: str | pv.UnstructuredGrid,
         mo_name: Optional[str] = None,
     ) -> List["MO"]:
         """
@@ -119,7 +119,7 @@ class PyLaGriT:
         Parameters
         ----------
         filename : str
-            Name of mesh file to read in
+            Name of mesh file or pyvista.UnstructuredGrid object.
 
         mo_name : str, optional
             Internal Lagrit name of new mesh object, automatically created if None.
@@ -129,15 +129,22 @@ class PyLaGriT:
         List[MO]
 
         """
-        return [MO(mo, self) for mo in self.core.read_mo(filename, mo_name)]
+        if isinstance(filename_or_pv_ugrid, str):
+            filename = filename_or_pv_ugrid
+            return [MO(mo, self) for mo in self.core.read_mo(filename, mo_name)]
+        elif isinstance(filename_or_pv_ugrid, pv.UnstructuredGrid):
+            grid = filename_or_pv_ugrid
+            return [self._from_pv(grid, mo_name)]
 
-    def from_pv(self, mesh: pv.UnstructuredGrid) -> "MO":
+    def _from_pv(
+        self, mesh: pv.UnstructuredGrid, mo_name: Optional[str] = None
+    ) -> "MO":
         """
         Create Mesho Object from pyvista.UnstructuredGrid
         """
         meshdata = pv_ug_to_lg(mesh)
 
-        mo = self.create()
+        mo = self.create(name=mo_name)
 
         mo.select()
 
