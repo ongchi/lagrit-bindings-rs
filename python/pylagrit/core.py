@@ -111,10 +111,8 @@ class PyLaGriT:
     def read_mo(
         self,
         filename: str,
-        filetype: Optional[str] = None,
-        name: Optional[str] = None,
-        binary=False,
-    ) -> Optional["MO" | List["MO"]]:
+        mo_name: Optional[str] = None,
+    ) -> List["MO"]:
         """
         Read in mesh
 
@@ -123,100 +121,15 @@ class PyLaGriT:
         filename : str
             Name of mesh file to read in
 
-        filetype : str, optional
-            Type of file, automatically detected if not specified, by default None
-
-        name : str, optional
-            Internal Lagrit name of new mesh object, automatically created if None, by default None
-
-        binary : bool, optional
-            Indicates that file is binary if True, ascii if False, by default False
+        mo_name : str, optional
+            Internal Lagrit name of new mesh object, automatically created if None.
 
         Returns
         -------
-        MO
-
-        Examples
-        --------
-        Example 1
-
-        >>> import pylagrit
-        >>> import numpy as np
-        >>> lg = pylagrit.PyLaGriT()
-
-        Create a mesh object and dump it to a gmv file 'test.gmv'.
-        >>> mo = lg.create(name="test")
-        >>> mo.createpts_brick("xyz", (5, 5, 5), (0, 0, 0), (5, 5, 5))
-        >>> mo.dump("test.gmv")
-        >>> mo.dump("test.avs")
-
-        >>> mo1 = lg.read_mo("test.gmv")
-        >>> mo2 = lg.read_mo("test.avs")
-
-        >>> lg.close()
-        >>> lg = pylagrit.PyLaGriT()
-
-        Example 2 - Reading in LaGriT binary file
-
-        Create list with mesh object as first element
-        >>> dxyz = (0.25, 0.25, 0.25)
-        >>> mins = (0.0, 0.0, 0.0)
-        >>> maxs = (1.0, 1.0, 1.0)
-        >>> mos = [
-        ...     lg.createpts_dxyz(dxyz, mins, maxs, "tet", connect=True, name="testmo")
-        ... ]
-
-        Create three new mesh objects, each one directly above the other
-        >>> for i in range(3):
-        ...     mos.append(mos[-1].copy())
-        ...     mins = (mos[-1].attr("xmin"), mos[-1].attr("ymin"), mos[-1].attr("zmin"))
-        ...     mos[-1].trans(mins, mins + np.array([0.0, 0.0, 1.0]))
-        >>> lg.dump("lagrit_binary.lg")
-
-        >>> lg.close()
-        >>> lg = pylagrit.PyLaGriT()
-
-        >>> ms_read = lg.read_mo("lagrit_binary.lg")
-        >>> print([mo.name for mo in ms_read])
-        ['testmo', 'mo1', 'mo2', 'mo3']
-
-        >>> lg.close()
+        List[MO]
 
         """
-        old_mo_list = self.core.mo_names()
-
-        cmd = ["read"]
-
-        # If filetype is lagrit, name is irrelevant
-        islg = filetype == "lagrit" or filename.split(".")[-1].lower() in [
-            "lg",
-            "lagrit",
-        ]
-
-        if islg:
-            cmd.append("lagrit")
-
-        cmd.append(filename)
-
-        if filetype is not None:
-            cmd.append(filetype)
-
-        if not islg and name is None:
-            name = new_name("mo", self.core.mo_names())
-            cmd.append(name)
-
-        if binary:
-            cmd.append("binary")
-
-        self.sendcmd("/".join(cmd))
-
-        if islg:
-            cur_mo_list = self.core.mo_names()
-            for mo in old_mo_list:
-                cur_mo_list.remove(mo)
-            return [MO(mo, self) for mo in cur_mo_list]
-        else:
-            return MO(cast(str, name), self)
+        return [MO(mo, self) for mo in self.core.read_mo(filename, mo_name)]
 
     def from_pv(self, mesh: pv.UnstructuredGrid) -> "MO":
         """

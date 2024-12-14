@@ -26,6 +26,8 @@ pub enum LagritError {
     InvalidValueLength,
     #[error("Invalid value type")]
     InvalidValueType,
+    #[error("Invalid path: {0}")]
+    InvalidPath(String),
     #[error("Error code: {0}")]
     Code(i32),
     #[error(transparent)]

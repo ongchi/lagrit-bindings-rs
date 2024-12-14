@@ -129,6 +129,16 @@ impl PyLaGriT {
         })
     }
 
+    #[pyo3(signature = (file_path, name=None))]
+    fn read_mo(&self, file_path: &str, name: Option<&str>) -> PyResult<Vec<String>> {
+        Ok(self
+            .lagrit
+            .read_mo(file_path, name)?
+            .into_iter()
+            .map(|mo| mo.name().to_string())
+            .collect())
+    }
+
     fn close(&self) -> PyResult<()> {
         Ok(self.lagrit.close()?)
     }

@@ -1,8 +1,9 @@
+use itertools::Itertools;
 use std::{
     ffi::CString,
     fs::File,
     io::{BufReader, Read, Seek, SeekFrom},
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, OnceLock, RwLock,
@@ -200,6 +201,93 @@ impl LaGriT {
     // Get current MeshObject
     pub fn cmo(&self) -> Result<MeshObject, LagritError> {
         Ok(MeshObject::new(&cmo_get_name()?))
+    }
+
+    pub fn read_mo<P: AsRef<Path>>(
+        &self,
+        file_path: P,
+        name: Option<&str>,
+    ) -> Result<Vec<MeshObject>, LagritError> {
+        let file_ext = file_path
+            .as_ref()
+            .extension()
+            .and_then(|e| e.to_str())
+            .ok_or_else(|| {
+                LagritError::InvalidPath(file_path.as_ref().to_string_lossy().to_string())
+            })?;
+
+        let (is_lg, mo_name) = match file_ext {
+            "lg" | "lagrit" => (
+                true,
+                name.map(|n| n.to_string())
+                    .unwrap_or_else(|| self.new_name().unwrap()),
+            ),
+            _ => (
+                false,
+                name.map(|n| n.to_string()).unwrap_or_else(|| {
+                    file_path
+                        .as_ref()
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|| self.new_name().unwrap())
+                }),
+            ),
+        };
+
+        let current_mos = self.mo_names()?;
+
+        // Calculate adler32 for file
+        let mut file = File::open(file_path.as_ref())?;
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf)?;
+        let checksum = hex::encode(adler::adler32_slice(&buf).to_ne_bytes());
+
+        // Create symbolic link to file in the workdir
+        let link_name = format!("{}.{}", checksum, file_ext);
+        let link_path = self
+            .workdir
+            .read()
+            .map_err(|_| LagritError::RwLockPoisoned)?
+            .join(&link_name);
+        let source_path = std::env::current_dir()?.join(file_path);
+        if source_path.exists() {
+            std::fs::remove_file(&link_path)?;
+        }
+        std::os::unix::fs::symlink(source_path, &link_path)?;
+
+        if is_lg {
+            self.sendcmd(&format!("read/lagrit/{link_name}/{mo_name}"))?;
+        } else {
+            self.sendcmd(&format!("read/{link_name}/{mo_name}"))?;
+        }
+
+        let new_mos = self.mo_names()?;
+
+        Ok(new_mos
+            .into_iter()
+            .filter(|n| !current_mos.contains(n))
+            .map(|n| MeshObject::new(&n))
+            .collect())
+    }
+
+    fn new_name(&self) -> Result<String, LagritError> {
+        let current_mos = self.mo_names()?;
+        match current_mos
+            .iter()
+            .filter_map(|n| {
+                if (n.len() > 2) && n.starts_with("mo") {
+                    n[2..].parse::<usize>().ok()
+                } else {
+                    None
+                }
+            })
+            .sorted()
+            .last()
+        {
+            Some(last) => Ok(format!("mo{}", last + 1)),
+            None => Ok("mo1".to_string()),
+        }
     }
 
     // Close log and batch files, then release memory
