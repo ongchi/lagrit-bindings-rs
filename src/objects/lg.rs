@@ -251,7 +251,7 @@ impl LaGriT {
             .map_err(|_| LagritError::RwLockPoisoned)?
             .join(&link_name);
         let source_path = std::env::current_dir()?.join(file_path);
-        if source_path.exists() {
+        if link_path.exists() {
             std::fs::remove_file(&link_path)?;
         }
         std::os::unix::fs::symlink(source_path, &link_path)?;
