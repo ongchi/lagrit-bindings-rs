@@ -35,3 +35,15 @@ pub enum AttrValue {
     Character(String),
     Vchar(Vec<String>),
 }
+
+#[derive(Debug)]
+#[cfg_attr(feature = "pyo3", derive(pyo3::IntoPyObject))]
+pub struct AttrInfo {
+    pub name: String,
+    pub type_: String,
+    pub rank: String,
+    pub length: String,
+    pub interpolation: String,
+    pub persistence: String,
+    pub ioflag: String,
+}

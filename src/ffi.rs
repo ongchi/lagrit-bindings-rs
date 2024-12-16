@@ -3,7 +3,7 @@ use std::ffi::CString;
 const STR_BUF_LEN: usize = 32;
 
 use crate::error::LagritError;
-use crate::objects::AttrValue;
+use crate::objects::{AttrInfo, AttrValue};
 use lagrit_sys::{
     fc_attr_len, fc_cmo_get_index, fc_cmo_get_mesh_type, fc_cmo_get_name, fc_dotask, fc_initlagrit,
     fc_mmfindbk, fc_mmrelprt, fc_set_fattr, fc_set_iattr,
@@ -183,9 +183,19 @@ pub fn cmo_get_mesh_type(mo: &str) -> Result<(String, i32), LagritError> {
     Ok((mesh_type.trim_matches('\0').to_string(), imesh_type))
 }
 
-pub fn cmo_attlist(mo: &str) -> Result<Vec<Vec<String>>, LagritError> {
-    let attrs = mmfindbk_string("cmo_attlist", mo)?;
-    Ok(attrs.chunks(7).map(|c| c.to_vec()).collect())
+pub fn cmo_attlist(mo: &str) -> Result<Vec<AttrInfo>, LagritError> {
+    Ok(mmfindbk_string("cmo_attlist", mo)?
+        .chunks(7)
+        .map(|c| AttrInfo {
+            name: c[0].clone(),
+            type_: c[1].clone(),
+            rank: c[2].clone(),
+            length: c[3].clone(),
+            interpolation: c[4].clone(),
+            persistence: c[5].clone(),
+            ioflag: c[6].clone(),
+        })
+        .collect())
 }
 
 pub fn cmo_get_info(option: &str, mo: &str) -> Result<AttrValue, LagritError> {
@@ -208,24 +218,24 @@ pub fn cmo_get_info(option: &str, mo: &str) -> Result<AttrValue, LagritError> {
     let mo_atts = cmo_attlist(&mo)?;
 
     for (idx, att) in mo_atts.iter().enumerate() {
-        if att[0] == option {
-            if att[1] == "INT" {
+        if att.name == option {
+            if att.type_ == "INT" {
                 return Ok(AttrValue::Int(
                     mmfindbk_i64("cmo_attparam_idefault", &mo)?[idx],
                 ));
-            } else if att[1] == "VINT" {
+            } else if att.type_ == "VINT" {
                 return Ok(AttrValue::Vint(mmfindbk_i64(option, &mo)?));
-            } else if att[1] == "REAL" {
+            } else if att.type_ == "REAL" {
                 return Ok(AttrValue::Real(
                     mmfindbk_f64("cmo_attparam_rdefault", &mo)?[idx],
                 ));
-            } else if att[1] == "VDOUBLE" {
+            } else if att.type_ == "VDOUBLE" {
                 return Ok(AttrValue::Vdouble(mmfindbk_f64(option, &mo)?));
-            } else if att[1] == "CHARACTER" {
+            } else if att.type_ == "CHARACTER" {
                 return Ok(AttrValue::Character(
                     mmfindbk_string("cmo_attparam_cdefault", &mo)?[idx].clone(),
                 ));
-            } else if att[1] == "VCHAR" {
+            } else if att.type_ == "VCHAR" {
                 return Ok(AttrValue::Vchar(mmfindbk_string(option, &mo)?));
             }
         }
@@ -243,14 +253,12 @@ pub fn cmo_set_info(option: &str, mo: &str, value: AttrValue) -> Result<(), Lagr
         _ => option,
     };
 
-    let attr_info = cmo_attlist(mo)?;
-    let (attr_type, attr_rank, attr_len) = attr_info
-        .iter()
-        .find(|info| info[0] == attr)
-        .map(|info| (&info[1], &info[2], &info[3]))
+    let attr_info = cmo_attlist(mo)?
+        .into_iter()
+        .find(|info| info.name == attr)
         .ok_or(LagritError::AttributeNotFound)?;
 
-    let attr_rank = match attr_rank.as_str() {
+    let attr_rank = match attr_info.rank.as_str() {
         "scalar" => 1,
         lenvar => match cmo_get_info(lenvar, mo)? {
             AttrValue::Int(v) => v,
@@ -258,7 +266,7 @@ pub fn cmo_set_info(option: &str, mo: &str, value: AttrValue) -> Result<(), Lagr
         },
     };
 
-    let attr_len = match attr_len.as_str() {
+    let attr_len = match attr_info.length.as_str() {
         "scalar" => 1,
         lenvar => match cmo_get_info(lenvar, mo)? {
             AttrValue::Int(v) => v,
@@ -273,7 +281,7 @@ pub fn cmo_set_info(option: &str, mo: &str, value: AttrValue) -> Result<(), Lagr
 
     match value {
         AttrValue::Vint(mut v) => unsafe {
-            if attr_type != "VINT" {
+            if attr_info.type_ != "VINT" {
                 return Err(LagritError::InvalidValueType);
             }
             let mut len = v.len() as i64;
@@ -289,7 +297,7 @@ pub fn cmo_set_info(option: &str, mo: &str, value: AttrValue) -> Result<(), Lagr
             );
         },
         AttrValue::Vdouble(mut v) => unsafe {
-            if attr_type != "VDOUBLE" {
+            if attr_info.type_ != "VDOUBLE" {
                 return Err(LagritError::InvalidValueType);
             }
             let mut len = v.len() as i64;

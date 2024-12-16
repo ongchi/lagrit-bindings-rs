@@ -1,4 +1,4 @@
-use super::AttrValue;
+use super::{AttrInfo, AttrValue};
 use crate::error::LagritError;
 use crate::ffi::{
     cmo_attlist, cmo_get_info, cmo_get_mesh_type, cmo_set_info, dotask, mmfindbk_string,
@@ -35,7 +35,7 @@ impl MeshObject {
         cmo_set_info(attr, &self.name, value)
     }
 
-    pub fn attr_list(&self) -> Result<Vec<Vec<String>>, LagritError> {
+    pub fn attr_list(&self) -> Result<Vec<AttrInfo>, LagritError> {
         cmo_attlist(&self.name)
     }
 

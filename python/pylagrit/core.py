@@ -1150,14 +1150,14 @@ class MO:
         attr_data = self.obj.attr_list()
 
         for attr in attr_data:
-            name = attr[0]
+            name = attr["name"]
             atts["attributes"][name] = {}
-            atts["attributes"][name]["type"] = attr[1]
-            atts["attributes"][name]["rank"] = attr[2]
-            atts["attributes"][name]["length"] = attr[3]
-            atts["attributes"][name]["inter"] = attr[4]
-            atts["attributes"][name]["persi"] = attr[5]
-            atts["attributes"][name]["io"] = attr[6]
+            atts["attributes"][name]["type"] = attr["type_"]
+            atts["attributes"][name]["rank"] = attr["rank"]
+            atts["attributes"][name]["length"] = attr["length"]
+            atts["attributes"][name]["inter"] = attr["interpolation"]
+            atts["attributes"][name]["persi"] = attr["persistence"]
+            atts["attributes"][name]["io"] = attr["ioflag"]
             # TODO: implement default value field for attribute
             atts["attributes"][name]["value"] = None
 

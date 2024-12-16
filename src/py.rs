@@ -6,7 +6,7 @@ use pyo3::types::{PyFloat, PyInt};
 use pyo3::{create_exception, PyErr};
 
 pub use crate::error::LagritError;
-use crate::objects::{AttrValue, LaGriT, MeshObject};
+use crate::objects::{AttrInfo, AttrValue, LaGriT, MeshObject};
 
 create_exception!(pylagrit, PyLagritError, PyException);
 
@@ -66,7 +66,7 @@ impl PyMeshObject {
         self.mesh_object.set_attr(attr, value).map_err(|e| e.into())
     }
 
-    fn attr_list(&self) -> PyResult<Vec<Vec<String>>> {
+    fn attr_list(&self) -> PyResult<Vec<AttrInfo>> {
         self.mesh_object.attr_list().map_err(|e| e.into())
     }
 
