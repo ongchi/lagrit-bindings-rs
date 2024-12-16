@@ -1681,62 +1681,6 @@ class MO:
         (xic, yic, zic); no values will be set for any other mesh object attribute for these points.
         Note:  The end points of the  line segment must extend well beyond the point set being rotated.
 
-        Examples
-        --------
-        Example 1
-
-        >>> import pylagrit
-        >>> import numpy as np
-        >>> lg = pylagrit.PyLaGriT()
-
-        >>> x = np.arange(0, 10.1, 1)
-        >>> y = x
-        >>> z = [0, 1]
-
-        >>> mqua = lg.gridder(x, y, z, elem_type="hex", connect=True)
-        >>> mqua.rotateln((mqua.attr("xmin") - 0.1, 0, 0), (mqua.attr("xmax") + 0.1, 0, 0), 25)
-
-        >>> lg.close()
-
-        Example 2
-
-        >>> import pylagrit
-        >>> import numpy as np
-        >>> lg = pylagrit.PyLaGriT()
-
-        >>> x = np.arange(0, 10.1, 1)
-        >>> y = [0, 1]
-
-        >>> layer = lg.gridder(x=x, y=y, elem_type="qua", connect=True)
-        >>> layer.rotateln([0, layer.attr("ymin") - 0.10, 0], [0, layer.attr("ymax") + 0.1, 0], 25)
-        >>> layer.dump("tmp_lay_top.inp")
-
-        >>> layers = [0.1, 1.0]
-        >>> addnum = [4, 2]
-        >>> matnum = [2, 1]
-        >>> layer_interfaces = np.cumsum(layers)
-        >>> mtop = layer.copy()
-        >>> stack_files = ["tmp_lay_top.inp 1,9"]
-
-        >>> i = 1
-        >>> for li, m, a in zip(layer_interfaces, matnum, addnum):
-        ...     layer.math("sub", "zic", li, cmosrc=mtop)
-        ...     stack_files.append(f"tmp_lay{str(i)}.inp {str(m)}, {str(a)}")
-        ...     layer.dump(f"tmp_lay{str(i)}.inp")
-        ...     i += 1
-        >>> layer.math("sub", "zic", 2, cmosrc=mtop)
-
-        >>> layer.dump("tmp_lay_bot.inp")
-        >>> stack_files.append("tmp_lay_bot.inp 2")
-        >>> stack_files.reverse()
-
-        Create stacked layer mesh and fill
-        >>> stack_hex = lg.create()
-        >>> stack_hex.stack_layers(stack_files, "avs", flip_opt=True)
-        >>> stack = stack_hex.stack_fill()
-
-        >>> lg.close()
-
         """
         self.sendcmd(
             "/".join(
@@ -3893,7 +3837,10 @@ class EltSet:
         >>> mtri = mqua.copypts("triplane")
         >>> mtri.connect()
 
-        >>> mtri.tri_mesh_output_prep()
+        >>> mtri.filter()
+        >>> mtri.rmpoint_compress()
+        >>> mtri.recon(1)
+        >>> mtri.resetpts_itp()
         >>> mtri.reorder_nodes(cycle="xic yic zic")
         >>> pfault = mtri.pset_geom("xyz", mins - 0.1, (0.0001, 0.1, 0))
         >>> psource = mtri.pset_geom("xyz", mins - 0.1, mins + 0.0001)
