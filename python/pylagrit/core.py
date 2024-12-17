@@ -145,17 +145,21 @@ class PyLaGriT:
         mo.select()
 
         mo._set_attr("nnodes", meshdata.nnodes)
-        mo._set_attr("nelements", meshdata.nelements)
-        mo._set_attr("nodes_per_element", meshdata.nodes_per_element)
+
+        if meshdata.nelements > 0:
+            mo._set_attr("nelements", meshdata.nelements)
+            mo._set_attr("nodes_per_element", meshdata.nodes_per_element)
 
         self.sendcmd(f"cmo/newlen/{mo.name}")
 
         mo._set_attr("xic", meshdata.xic)
         mo._set_attr("yic", meshdata.yic)
         mo._set_attr("zic", meshdata.zic)
-        mo._set_attr("itet", meshdata.itet)
-        mo._set_attr("itettyp", meshdata.itettyp)
-        mo._set_attr("itetoff", meshdata.itetoff)
+
+        if meshdata.nelements > 0:
+            mo._set_attr("itet", meshdata.itet)
+            mo._set_attr("itettyp", meshdata.itettyp)
+            mo._set_attr("itetoff", meshdata.itetoff)
 
         for key, val in mesh.point_data.items():
             if val.dtype == np.int64:
@@ -1944,10 +1948,16 @@ class MO:
 
     @property
     def vtk_celltypes(self):
+        if self.attr("nelements") == 0:
+            return np.array([])
+
         return lg_to_vtk_celltypes(cast(List[int], self.attr("itettyp")))
 
     @property
     def cells(self):
+        if self.attr("nelements") == 0:
+            return np.array([], dtype=np.int64)
+
         el_offset = cast(List[int], self.attr("itetoff"))
         el_nodes = np.array(self.attr("itet")) - 1
 

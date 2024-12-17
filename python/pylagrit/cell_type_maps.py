@@ -167,6 +167,9 @@ def pv_ug_to_lg(ug: UnstructuredGrid) -> LgMeshData:
     yic = ug.points[:, 1]
     zic = ug.points[:, 2]
 
+    if len(ug.cells) == 0:
+        return LgMeshData(xic, yic, zic, np.array([]), np.array([]), np.array([]))
+
     itettyp = vtk_to_lg_celltypes(ug.celltypes)
 
     itetoff = np.array([CELL_NODE_NUMBERS[t] for t in ug.celltypes]).cumsum()
