@@ -127,7 +127,7 @@ class PyLaGriT:
         """
         if isinstance(filename_or_pv_ugrid, str):
             filename = filename_or_pv_ugrid
-            return [MO(mo, self) for mo in self.core.read_mo(filename, mo_name)]
+            return [MO(mo.name(), self) for mo in self.core.read_mo(filename, mo_name)]
         elif isinstance(filename_or_pv_ugrid, pv.UnstructuredGrid):
             grid = filename_or_pv_ugrid
             return [self._from_pv(grid, mo_name)]
