@@ -527,8 +527,7 @@ class PyLaGriT:
     def dump(
         self,
         filename: str,
-        mos: "Optional[Iterable[MO | str]]" = None,
-        filetype: Literal["binary", "ascii"] = "binary",
+        mo: "Optional[MO | str]" = None,
     ):
         """
         Dump lagrit binary file
@@ -536,23 +535,18 @@ class PyLaGriT:
         Parameters
         ----------
         filename : str
-            Name of lagrit binary file to create
+            Name of mesh file to create
 
-        mos : Iterable[MO]
-            List of mesh objects to include
-
-        filetype : str, optional
-            Filetype to dump, 'binary' or 'ascii', by default "binary"
+        mo : MO
+            mesh object
 
         """
-        cmd = ["dump", "lagrit", filename]
-        if mos is None:
-            cmd.append("-all-")
+        if mo is None:
+            self.core.dump_mo(filename, None)
         else:
-            cmd.extend([str(mo) for mo in mos])
-        if filetype == "ascii":
-            cmd.append("ascii")
-        self.sendcmd("/".join(cmd))
+            self.core.dump_mo(
+                filename, MO(mo, self).obj if isinstance(mo, str) else mo.obj
+            )
 
     def createpts(
         self,
@@ -2013,43 +2007,11 @@ class MO:
             **kwargs,
         )
 
-    def dump(self, filename: Optional[str] = None, format: Optional[str] = None, *args):
-        if filename is None and format is None:
-            raise ValueError(
-                "At least one of either filename or format option is required"
-            )
-
-        if filename is not None and format is not None:
-            if format in ["fehm", "zone_outside", "zone_outside_minmax"]:
-                filename = filename.split(".")[0]
-            if format == "stor" and len(args) == 0:
-                filename = filename.split(".")[0]
-            cmd = "/".join(["dump", format, filename, self.name])
-        elif format is not None:
-            if format in ["avs", "avs2"]:
-                filename = self.name + ".inp"
-            elif format == "fehm":
-                filename = self.name
-            elif format == "gmv":
-                filename = self.name + ".gmv"
-            elif format == "tecplot":
-                filename = self.name + ".plt"
-            elif format == "lagrit":
-                filename = self.name + ".lg"
-            elif format == "exo":
-                filename = self.name + ".exo"
-            else:
-                raise NotImplementedError("Unsupported format")
-            cmd = "/".join(["dump", format, filename, self.name])
-        elif filename is not None:
-            cmd = "/".join(["dump", filename, self.name])
-        else:
-            cmd = "/".join(["dump", self.name + ".inp"])
-
-        for arg in args:
-            cmd = "/".join([cmd, str(arg)])
-
-        self.sendcmd(cmd)
+    def dump(
+        self,
+        filename: str,
+    ):
+        self.lg.dump(filename, self)
 
     def dump_zone_imt(self, filename: str, imt_value: int):
         cmd = ["dump", "zone_imt", filename, self.name, str(imt_value)]

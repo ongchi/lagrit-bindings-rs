@@ -31,9 +31,27 @@ impl<'py> FromPyObject<'py> for AttrValue {
     }
 }
 
+impl<'py> FromPyObject<'py> for MeshObject {
+    fn extract_bound(obj: &Bound<'py, PyAny>) -> PyResult<Self> {
+        match obj.downcast::<PyMeshObject>() {
+            Ok(mo) => Ok(MeshObject::new(mo.extract::<PyMeshObject>()?.name())),
+            Err(_) => Err(PyErr::new::<PyLagritError, _>("Invalid MeshObject")),
+        }
+    }
+}
+
+#[derive(Clone)]
 #[pyclass(name = "MeshObject", module = "lagrit_bindings", subclass)]
 pub struct PyMeshObject {
     pub mesh_object: Arc<MeshObject>,
+}
+
+impl From<MeshObject> for PyMeshObject {
+    fn from(mo: MeshObject) -> Self {
+        Self {
+            mesh_object: Arc::new(mo),
+        }
+    }
 }
 
 #[pymethods]
@@ -76,6 +94,10 @@ impl PyMeshObject {
 
     fn eltset_names(&self) -> PyResult<Vec<String>> {
         self.mesh_object.eltset_names().map_err(|e| e.into())
+    }
+
+    fn dump(&self, file_path: &str) -> PyResult<()> {
+        self.mesh_object.dump(file_path).map_err(|e| e.into())
     }
 }
 
@@ -130,13 +152,18 @@ impl PyLaGriT {
     }
 
     #[pyo3(signature = (file_path, name=None))]
-    fn read_mo(&self, file_path: &str, name: Option<&str>) -> PyResult<Vec<String>> {
+    fn read_mo(&self, file_path: &str, name: Option<&str>) -> PyResult<Vec<PyMeshObject>> {
         Ok(self
             .lagrit
             .read_mo(file_path, name)?
             .into_iter()
-            .map(|mo| mo.name().to_string())
+            .map(|mo| mo.into())
             .collect())
+    }
+
+    #[pyo3(signature = (file_path, mo=None))]
+    fn dump_mo(&self, file_path: &str, mo: Option<MeshObject>) -> PyResult<()> {
+        Ok(self.lagrit.dump_mo(file_path, mo)?)
     }
 
     fn close(&self) -> PyResult<()> {

@@ -19,7 +19,7 @@ use crate::{
     utils::Pushd,
 };
 
-static LAGRIT: OnceLock<Arc<LaGriT>> = OnceLock::new();
+pub(crate) static LAGRIT: OnceLock<Arc<LaGriT>> = OnceLock::new();
 
 pub struct LaGriT {
     is_initialized: AtomicBool,
@@ -269,6 +269,47 @@ impl LaGriT {
             .filter(|n| !current_mos.contains(n))
             .map(|n| MeshObject::new(&n))
             .collect())
+    }
+
+    pub fn dump_mo<P: AsRef<Path>>(
+        &self,
+        file_path: P,
+        mo: Option<MeshObject>,
+    ) -> Result<(), LagritError> {
+        let file_path = file_path.as_ref();
+        let file_ext = file_path.extension().and_then(|e| e.to_str());
+        let mut file_name = file_path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .map(|s| s.to_string())
+            .ok_or_else(|| LagritError::InvalidPath(file_path.to_string_lossy().to_string()))?;
+
+        let file_ext = file_ext.unwrap_or_else(|| {
+            file_name.push_str(".lg");
+            ".lg"
+        });
+
+        if let Some(mo) = mo {
+            self.sendcmd(&format!("dump/{file_name}/{}", mo.name()))?;
+        } else if file_ext == "lg" || file_ext == "lagrit" {
+            self.sendcmd(&format!("dump/{file_name}/-all-"))?;
+        } else {
+            return Err(LagritError::InvalidArguments(
+                "Only one MeshObject is allowed for non-Lagrit file".to_string(),
+            ));
+        };
+
+        let parent_path = file_path.parent().unwrap_or_else(|| Path::new("."));
+        std::fs::create_dir_all(parent_path)?;
+        let workdir = self
+            .workdir
+            .read()
+            .map_err(|_| LagritError::RwLockPoisoned)?
+            .clone();
+        let dump_file = workdir.join(file_name);
+        std::fs::rename(&dump_file, file_path)?;
+
+        Ok(())
     }
 
     fn new_name(&self) -> Result<String, LagritError> {

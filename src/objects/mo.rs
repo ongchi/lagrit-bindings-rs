@@ -1,9 +1,11 @@
+use super::lg::LAGRIT;
 use super::{AttrInfo, AttrValue};
 use crate::error::LagritError;
 use crate::ffi::{
     cmo_attlist, cmo_get_info, cmo_get_mesh_type, cmo_set_info, dotask, mmfindbk_string,
 };
 
+#[derive(Debug, Clone)]
 pub struct MeshObject {
     name: String,
 }
@@ -58,5 +60,10 @@ impl MeshObject {
             .into_iter()
             .filter(|c| !c.is_empty())
             .collect())
+    }
+
+    pub fn dump(&self, file_path: &str) -> Result<(), LagritError> {
+        let lg = LAGRIT.get().ok_or(LagritError::NotInitialized)?;
+        lg.dump_mo(file_path, Some(self.clone()))
     }
 }

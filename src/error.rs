@@ -10,8 +10,8 @@ pub enum LagritError {
     RwLockPoisoned,
     #[error("Unknown error")]
     Unknown,
-    #[error("Invalid arguments")]
-    InvalidArguments,
+    #[error("Invalid arguments: {0}")]
+    InvalidArguments(String),
     #[error("Zero length result")]
     ZeroLengthResult,
     #[error("Mesh object not found")]
@@ -40,7 +40,7 @@ impl From<i32> for LagritError {
     fn from(err_code: i32) -> Self {
         match err_code {
             1 => LagritError::Unknown,
-            2 => LagritError::InvalidArguments,
+            2 => LagritError::InvalidArguments("".to_string()),
             _ => LagritError::Code(err_code),
         }
     }
