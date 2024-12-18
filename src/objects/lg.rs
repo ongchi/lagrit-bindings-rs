@@ -208,59 +208,66 @@ impl LaGriT {
         file_path: P,
         name: Option<&str>,
     ) -> Result<Vec<MeshObject>, LagritError> {
+        let file_path = file_path.as_ref();
+        let file_name = file_path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .ok_or_else(|| LagritError::InvalidPath(file_path.to_string_lossy().to_string()))?;
         let file_ext = file_path
-            .as_ref()
             .extension()
             .and_then(|e| e.to_str())
-            .ok_or_else(|| {
-                LagritError::InvalidPath(file_path.as_ref().to_string_lossy().to_string())
-            })?;
+            .ok_or_else(|| LagritError::InvalidPath(file_path.to_string_lossy().to_string()))?;
 
         let (is_lg, mo_name) = match file_ext {
-            "lg" | "lagrit" => (
-                true,
-                name.map(|n| n.to_string())
-                    .unwrap_or_else(|| self.new_name().unwrap()),
-            ),
+            // mo_name is ignored for lagrit file
+            "lg" | "lagrit" => (true, "".to_string()),
             _ => (
                 false,
                 name.map(|n| n.to_string()).unwrap_or_else(|| {
                     file_path
-                        .as_ref()
                         .file_stem()
                         .and_then(|s| s.to_str())
                         .map(|s| s.to_string())
-                        .unwrap_or_else(|| self.new_name().unwrap())
+                        .unwrap_or(self.new_name().unwrap())
                 }),
             ),
         };
 
         let current_mos = self.mo_names()?;
 
-        // Calculate adler32 for file
-        let mut file = File::open(file_path.as_ref())?;
-        let mut buf = Vec::new();
-        file.read_to_end(&mut buf)?;
-        let checksum = hex::encode(adler::adler32_slice(&buf).to_ne_bytes());
+        // Check if file exists
+        let file = File::open(file_path)?;
+        drop(file);
 
-        // Create symbolic link to file in the workdir
-        let link_name = format!("{}.{}", checksum, file_ext);
-        let link_path = self
+        let workdir = self
             .workdir
             .read()
             .map_err(|_| LagritError::RwLockPoisoned)?
-            .join(&link_name);
-        let source_path = std::env::current_dir()?.join(file_path);
-        if link_path.exists() {
-            std::fs::remove_file(&link_path)?;
-        }
-        std::os::unix::fs::symlink(source_path, &link_path)?;
+            .clone();
+        let currentdir = std::env::current_dir()?;
+
+        // Create symbolic link if workdir is different from currentdir
+        let link_path = if workdir != currentdir {
+            let file_path = if file_path.is_absolute() {
+                file_path.to_path_buf()
+            } else {
+                currentdir.join(file_path)
+            };
+            let link_path = workdir.join(file_name);
+            std::os::unix::fs::symlink(file_path, &link_path)?;
+            Some(link_path)
+        } else {
+            None
+        };
 
         if is_lg {
-            self.sendcmd(&format!("read/lagrit/{link_name}/{mo_name}"))?;
+            self.sendcmd(&format!("read/lagrit/{file_name}"))?;
         } else {
-            self.sendcmd(&format!("read/{link_name}/{mo_name}"))?;
+            self.sendcmd(&format!("read/{file_name}/{mo_name}"))?;
         }
+
+        // Remove symbolic link
+        link_path.map(std::fs::remove_file).transpose()?;
 
         let new_mos = self.mo_names()?;
 
