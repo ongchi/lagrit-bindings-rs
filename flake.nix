@@ -15,7 +15,15 @@
     nixpkgs,
   }:
     flake-utils.lib.eachDefaultSystem (system: let
-      toolchain = fenix.packages.${system}.default.toolchain;
+      toolchain = with fenix.packages.${system};
+        combine [
+          stable.cargo
+          stable.clippy
+          stable.rust-src
+          stable.rustc
+          stable.rustfmt
+          rust-analyzer
+        ];
       pkgs = nixpkgs.legacyPackages.${system};
     in {
       devShells.default = pkgs.mkShellNoCC {
