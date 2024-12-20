@@ -19,7 +19,7 @@ fn main() -> Result<(), LagritError> {
     lg.sendcmd("connect/noadd")?;
     lg.sendcmd("dump/avs/ex1_test.inp/mocyl")?;
 
-    let cmo = lg.cmo()?;
+    let cmo = lg.get_mo(None)?;
     println!("cmo: {}", cmo.name());
     cmo.status()?;
 

@@ -21,6 +21,7 @@ use crate::{
 
 pub(crate) static LAGRIT: OnceLock<Arc<LaGriT>> = OnceLock::new();
 
+#[derive(Debug)]
 pub struct LaGriT {
     is_initialized: AtomicBool,
     log_file: RwLock<String>,
@@ -198,9 +199,20 @@ impl LaGriT {
         Ok(names)
     }
 
-    // Get current MeshObject
-    pub fn cmo(&self) -> Result<MeshObject, LagritError> {
-        Ok(MeshObject::new(&cmo_get_name()?))
+    pub fn get_mo(&self, name: Option<&str>) -> Result<MeshObject, LagritError> {
+        match name {
+            None => Ok(MeshObject::new(&cmo_get_name()?)),
+            Some(name) => {
+                if self.mo_names()?.iter().map(|n| n.as_str()).contains(&name) {
+                    Ok(MeshObject::new(name))
+                } else {
+                    Err(LagritError::InvalidArguments(format!(
+                        "MeshObject {} does not exist",
+                        name
+                    )))
+                }
+            }
+        }
     }
 
     pub fn read_mo<P: AsRef<Path>>(
@@ -336,6 +348,10 @@ impl LaGriT {
             Some(last) => Ok(format!("mo{}", last + 1)),
             None => Ok("mo1".to_string()),
         }
+    }
+
+    pub fn is_initialized(&self) -> bool {
+        self.is_initialized.load(Ordering::Relaxed)
     }
 
     // Close log and batch files, then release memory

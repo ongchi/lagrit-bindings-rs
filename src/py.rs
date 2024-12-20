@@ -145,9 +145,10 @@ impl PyLaGriT {
         Ok(self.lagrit.eltset_names()?)
     }
 
-    fn cmo(&self) -> PyResult<PyMeshObject> {
+    #[pyo3(signature = (name=None))]
+    fn get_mo(&self, name: Option<&str>) -> PyResult<PyMeshObject> {
         Ok(PyMeshObject {
-            mesh_object: Arc::new(self.lagrit.cmo()?),
+            mesh_object: Arc::new(self.lagrit.get_mo(name)?),
         })
     }
 

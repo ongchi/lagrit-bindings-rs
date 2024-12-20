@@ -101,8 +101,11 @@ class PyLaGriT:
 
     @property
     def cmo(self) -> "MO":
-        cmo = self.core.cmo()
-        return MO(cmo.name(), self)
+        return self.get_mo(None)
+
+    def get_mo(self, name: Optional[str] = None) -> "MO":
+        mo = self.core.get_mo(name)
+        return MO(mo.name(), self)
 
     def read_mo(
         self,
