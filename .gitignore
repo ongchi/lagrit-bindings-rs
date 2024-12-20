@@ -72,7 +72,7 @@ docs/_build/
 .python-version
 
 # Test output
-examples/*_output/
+examples/output/
 python/tests/pytest_output
 
 # direnv
