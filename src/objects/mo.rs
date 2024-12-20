@@ -1,9 +1,7 @@
 use super::lg::LAGRIT;
 use super::{AttrInfo, AttrValue};
 use crate::error::LagritError;
-use crate::ffi::{
-    cmo_attlist, cmo_get_info, cmo_get_mesh_type, cmo_set_info, dotask, mmfindbk_string,
-};
+use crate::ffi::{cmo_attlist, cmo_get_info, cmo_get_mesh_type, cmo_set_info, mmfindbk_string};
 
 #[derive(Debug, Clone)]
 pub struct MeshObject {
@@ -11,7 +9,7 @@ pub struct MeshObject {
 }
 
 impl MeshObject {
-    pub fn new(name: &str) -> Self {
+    pub(crate) fn new(name: &str) -> Self {
         Self {
             name: name.to_string(),
         }
@@ -22,7 +20,12 @@ impl MeshObject {
     }
 
     pub fn status(&self) -> Result<(), LagritError> {
-        dotask(&format!("cmo/status/{}", self.name))
+        let lg = LAGRIT.get().ok_or(LagritError::NotInitialized)?;
+        if lg.is_initialized() {
+            lg.sendcmd(&format!("cmo/status/{}", self.name))
+        } else {
+            Err(LagritError::NotInitialized)
+        }
     }
 
     pub fn mesh_type(&self) -> Result<(String, i32), LagritError> {
