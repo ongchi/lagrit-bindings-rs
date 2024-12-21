@@ -1,7 +1,7 @@
 pub mod lg;
 pub mod mo;
 
-pub use lg::LaGriT;
+pub use lg::{CmdWithInput, CmdWithOutput, LaGriT};
 pub use mo::MeshObject;
 
 use crate::error::LagritError;

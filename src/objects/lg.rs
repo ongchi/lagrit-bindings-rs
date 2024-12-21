@@ -159,12 +159,12 @@ impl LaGriT {
         Ok(())
     }
 
-    pub fn with_input<P: AsRef<Path>>(&self, file: P) -> LagritWithInput {
-        LagritWithInput::new(file)
+    pub fn with_input<P: AsRef<Path>>(&self, file: P) -> CmdWithInput {
+        CmdWithInput::new(file)
     }
 
-    pub fn with_output<P: AsRef<Path>>(&self, file: P) -> LagritWithOutput {
-        LagritWithOutput::new(file)
+    pub fn with_output<P: AsRef<Path>>(&self, file: P) -> CmdWithOutput {
+        CmdWithOutput::new(file)
     }
 
     pub fn cmdmsg(&self) -> Result<String, LagritError> {
@@ -400,11 +400,11 @@ impl Pushd {
     }
 }
 
-pub struct LagritWithInput {
+pub struct CmdWithInput {
     file: PathBuf,
 }
 
-impl LagritWithInput {
+impl CmdWithInput {
     fn new<P: AsRef<Path>>(file: P) -> Self {
         Self {
             file: file.as_ref().to_path_buf(),
@@ -457,11 +457,11 @@ impl LagritWithInput {
     }
 }
 
-pub struct LagritWithOutput {
+pub struct CmdWithOutput {
     file: PathBuf,
 }
 
-impl LagritWithOutput {
+impl CmdWithOutput {
     fn new<P: AsRef<Path>>(file: P) -> Self {
         Self {
             file: file.as_ref().to_path_buf(),

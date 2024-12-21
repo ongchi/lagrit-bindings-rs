@@ -6,7 +6,7 @@ use pyo3::types::{PyFloat, PyInt};
 use pyo3::{create_exception, PyErr};
 
 pub use crate::error::LagritError;
-use crate::objects::{AttrInfo, AttrValue, LaGriT, MeshObject};
+use crate::objects::{AttrInfo, AttrValue, CmdWithInput, CmdWithOutput, LaGriT, MeshObject};
 
 create_exception!(pylagrit, PyLagritError, PyException);
 
@@ -101,6 +101,26 @@ impl PyMeshObject {
     }
 }
 
+#[pyclass(name = "LgCmdWithInput", module = "lagrit_bindings", subclass)]
+pub struct LgCmdWithInput(Arc<CmdWithInput>);
+
+#[pymethods]
+impl LgCmdWithInput {
+    fn sendcmd(&self, cmd: &str) -> PyResult<()> {
+        Ok(self.0.sendcmd(cmd)?)
+    }
+}
+
+#[pyclass(name = "LgCmdWithOutput", module = "lagrit_bindings", subclass)]
+pub struct LgCmdWithOutput(Arc<CmdWithOutput>);
+
+#[pymethods]
+impl LgCmdWithOutput {
+    fn sendcmd(&self, cmd: &str) -> PyResult<()> {
+        Ok(self.0.sendcmd(cmd)?)
+    }
+}
+
 #[pyclass(name = "LaGriT", module = "lagrit_bindings", subclass)]
 pub struct PyLaGriT {
     pub lagrit: Arc<LaGriT>,
@@ -123,6 +143,14 @@ impl PyLaGriT {
 
     fn sendcmd(&self, cmd: &str) -> PyResult<()> {
         Ok(self.lagrit.sendcmd(cmd)?)
+    }
+
+    fn with_input(&self, input: &str) -> PyResult<LgCmdWithInput> {
+        Ok(LgCmdWithInput(Arc::new(self.lagrit.with_input(input))))
+    }
+
+    fn with_output(&self, output: &str) -> PyResult<LgCmdWithOutput> {
+        Ok(LgCmdWithOutput(Arc::new(self.lagrit.with_output(output))))
     }
 
     fn cmdmsg(&self) -> PyResult<String> {
@@ -175,6 +203,8 @@ impl PyLaGriT {
 #[pymodule]
 fn lagrit_bindings(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyMeshObject>()?;
+    m.add_class::<LgCmdWithInput>()?;
+    m.add_class::<LgCmdWithOutput>()?;
     m.add_class::<PyLaGriT>()?;
     Ok(())
 }
