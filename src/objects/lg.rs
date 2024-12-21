@@ -160,6 +160,10 @@ impl LaGriT {
         Ok(())
     }
 
+    pub fn with_input<P: AsRef<Path>>(&self, file: P) -> LagritWithInput {
+        LagritWithInput::new(file)
+    }
+
     pub fn cmdmsg(&self) -> Result<String, LagritError> {
         Ok(self
             .cmd_msg
@@ -247,39 +251,13 @@ impl LaGriT {
 
         let current_mos = self.mo_names()?;
 
-        // Check if file exists
-        let file = File::open(file_path)?;
-        drop(file);
-
-        let workdir = self
-            .workdir
-            .read()
-            .map_err(|_| LagritError::RwLockPoisoned)?
-            .clone();
-        let currentdir = std::env::current_dir()?;
-
-        // Create symbolic link if workdir is different from currentdir
-        let link_path = if workdir != currentdir {
-            let file_path = if file_path.is_absolute() {
-                file_path.to_path_buf()
+        self.with_input(file_path).sendcmd(
+            &(if is_lg {
+                format!("read/lagrit/{file_name}")
             } else {
-                currentdir.join(file_path)
-            };
-            let link_path = workdir.join(file_name);
-            std::os::unix::fs::symlink(file_path, &link_path)?;
-            Some(link_path)
-        } else {
-            None
-        };
-
-        if is_lg {
-            self.sendcmd(&format!("read/lagrit/{file_name}"))?;
-        } else {
-            self.sendcmd(&format!("read/{file_name}/{mo_name}"))?;
-        }
-
-        // Remove symbolic link
-        link_path.map(std::fs::remove_file).transpose()?;
+                format!("read/{file_name}/{mo_name}")
+            }),
+        )?;
 
         let new_mos = self.mo_names()?;
 
@@ -401,6 +379,63 @@ impl LaGriT {
             .for_each(|part| mmrelprt(part).unwrap());
 
         self.is_initialized.store(false, Ordering::Relaxed);
+
+        Ok(())
+    }
+}
+
+pub struct LagritWithInput {
+    file: PathBuf,
+}
+
+impl LagritWithInput {
+    fn new<P: AsRef<Path>>(file: P) -> Self {
+        Self {
+            file: file.as_ref().to_path_buf(),
+        }
+    }
+
+    pub fn sendcmd(&self, cmd: &str) -> Result<(), LagritError> {
+        let lg = LAGRIT
+            .get()
+            .filter(|lg| lg.is_initialized())
+            .ok_or(LagritError::NotInitialized)?;
+
+        // Check if file exists
+        let file = File::open(&self.file)?;
+        drop(file);
+
+        let workdir = lg
+            .workdir
+            .read()
+            .map_err(|_| LagritError::RwLockPoisoned)?
+            .clone();
+        let currentdir = std::env::current_dir()?;
+
+        let file_name = self
+            .file
+            .file_name()
+            .and_then(|s| s.to_str())
+            .ok_or_else(|| LagritError::InvalidPath(self.file.to_string_lossy().to_string()))?;
+
+        // Create symbolic link if workdir is different from currentdir
+        let link_path = if workdir != currentdir {
+            let file_path = if self.file.is_absolute() {
+                self.file.clone()
+            } else {
+                currentdir.join(&self.file)
+            };
+            let link_path = workdir.join(file_name);
+            std::os::unix::fs::symlink(file_path, &link_path)?;
+            Some(link_path)
+        } else {
+            None
+        };
+
+        lg.sendcmd(cmd)?;
+
+        // Remove symbolic link
+        link_path.map(std::fs::remove_file).transpose()?;
 
         Ok(())
     }
