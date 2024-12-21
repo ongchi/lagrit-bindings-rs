@@ -16,7 +16,6 @@ use super::{InitMode, MeshObject};
 use crate::{
     error::LagritError,
     ffi::{cmo_get_name, dotask, initlagrit, mmfindbk_string, mmrelprt},
-    utils::Pushd,
 };
 
 pub(crate) static LAGRIT: OnceLock<Arc<LaGriT>> = OnceLock::new();
@@ -378,6 +377,29 @@ impl LaGriT {
     }
 }
 
+struct Pushd {
+    current: PathBuf,
+}
+
+impl Pushd {
+    fn new<P: AsRef<Path>>(path: P) -> Result<Self, LagritError> {
+        let current = std::env::current_dir()?;
+        let target = path.as_ref().to_path_buf();
+
+        if !target.exists() {
+            std::fs::create_dir_all(&target)?;
+        }
+
+        std::env::set_current_dir(&target)?;
+        Ok(Self { current })
+    }
+
+    fn pop(self) -> Result<(), LagritError> {
+        let _ = std::env::set_current_dir(&self.current);
+        Ok(())
+    }
+}
+
 pub struct LagritWithInput {
     file: PathBuf,
 }
@@ -475,7 +497,9 @@ impl LagritWithOutput {
 
         if let Some(target_parent) = target_path.parent() {
             if target_parent != currentdir {
-                std::fs::create_dir_all(target_parent)?;
+                if !target_parent.exists() {
+                    std::fs::create_dir_all(target_parent)?;
+                }
                 std::fs::rename(workdir.join(file_name), &target_path)?;
             }
         }
