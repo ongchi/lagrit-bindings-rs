@@ -164,6 +164,10 @@ impl LaGriT {
         LagritWithInput::new(file)
     }
 
+    pub fn with_output<P: AsRef<Path>>(&self, file: P) -> LagritWithOutput {
+        LagritWithOutput::new(file)
+    }
+
     pub fn cmdmsg(&self) -> Result<String, LagritError> {
         Ok(self
             .cmd_msg
@@ -286,27 +290,17 @@ impl LaGriT {
             ".lg"
         });
 
-        if let Some(mo) = mo {
-            self.sendcmd(&format!("dump/{file_name}/{}", mo.name()))?;
-        } else if file_ext == "lg" || file_ext == "lagrit" {
-            self.sendcmd(&format!("dump/{file_name}/-all-"))?;
-        } else {
-            return Err(LagritError::InvalidArguments(
-                "Only one MeshObject is allowed for non-Lagrit file".to_string(),
-            ));
-        };
-
-        let parent_path = file_path.parent().unwrap_or_else(|| Path::new("."));
-        std::fs::create_dir_all(parent_path)?;
-        let workdir = self
-            .workdir
-            .read()
-            .map_err(|_| LagritError::RwLockPoisoned)?
-            .clone();
-        let dump_file = workdir.join(file_name);
-        std::fs::rename(&dump_file, file_path)?;
-
-        Ok(())
+        self.with_output(file_path).sendcmd(
+            &(if let Some(mo) = mo {
+                format!("dump/{file_name}/{}", mo.name())
+            } else if file_ext == "lg" || file_ext == "lagrit" {
+                format!("dump/{file_name}/-all-")
+            } else {
+                return Err(LagritError::InvalidArguments(
+                    "Only one MeshObject is allowed for non-Lagrit file".to_string(),
+                ));
+            }),
+        )
     }
 
     fn new_name(&self) -> Result<String, LagritError> {
@@ -436,6 +430,55 @@ impl LagritWithInput {
 
         // Remove symbolic link
         link_path.map(std::fs::remove_file).transpose()?;
+
+        Ok(())
+    }
+}
+
+pub struct LagritWithOutput {
+    file: PathBuf,
+}
+
+impl LagritWithOutput {
+    fn new<P: AsRef<Path>>(file: P) -> Self {
+        Self {
+            file: file.as_ref().to_path_buf(),
+        }
+    }
+
+    pub fn sendcmd(&self, cmd: &str) -> Result<(), LagritError> {
+        let file_name = self
+            .file
+            .file_name()
+            .and_then(|s| s.to_str())
+            .ok_or_else(|| LagritError::InvalidPath(self.file.to_string_lossy().to_string()))?;
+
+        let lg = LAGRIT
+            .get()
+            .filter(|lg| lg.is_initialized())
+            .ok_or(LagritError::NotInitialized)?;
+
+        lg.sendcmd(cmd)?;
+
+        let workdir = lg
+            .workdir
+            .read()
+            .map_err(|_| LagritError::RwLockPoisoned)?
+            .clone();
+        let currentdir = std::env::current_dir()?;
+
+        let target_path = if self.file.is_absolute() {
+            self.file.clone()
+        } else {
+            currentdir.join(&self.file)
+        };
+
+        if let Some(target_parent) = target_path.parent() {
+            if target_parent != currentdir {
+                std::fs::create_dir_all(target_parent)?;
+                std::fs::rename(workdir.join(file_name), &target_path)?;
+            }
+        }
 
         Ok(())
     }
