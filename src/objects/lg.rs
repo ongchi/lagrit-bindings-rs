@@ -496,12 +496,10 @@ impl CmdWithOutput {
         };
 
         if let Some(target_parent) = target_path.parent() {
-            if target_parent != currentdir {
-                if !target_parent.exists() {
-                    std::fs::create_dir_all(target_parent)?;
-                }
-                std::fs::rename(workdir.join(file_name), &target_path)?;
+            if !target_parent.exists() {
+                std::fs::create_dir_all(target_parent)?;
             }
+            std::fs::rename(workdir.join(file_name), &target_path)?;
         }
 
         Ok(())
