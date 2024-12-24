@@ -412,13 +412,24 @@ impl Pushd {
 }
 
 pub struct CmdWithInput {
-    file: PathBuf,
+    files: Vec<PathBuf>,
 }
 
 impl CmdWithInput {
     fn new<P: AsRef<Path>>(file: P) -> Self {
         Self {
-            file: file.as_ref().to_path_buf(),
+            files: vec![file.as_ref().to_path_buf()],
+        }
+    }
+
+    pub fn with_input<P: AsRef<Path>>(&self, file: P) -> Self {
+        Self {
+            files: self
+                .files
+                .iter()
+                .chain(std::iter::once(&file.as_ref().to_path_buf()))
+                .cloned()
+                .collect(),
         }
     }
 
@@ -428,43 +439,46 @@ impl CmdWithInput {
             .filter(|lg| lg.is_initialized())
             .ok_or(LagritError::NotInitialized)?;
 
-        // Check if file exists
-        let file = File::open(&self.file)?;
-        drop(file);
+        let mut link_paths = vec![];
+        for file in &self.files {
+            // Check if file exists
+            let _file = File::open(file)?;
+            drop(_file);
 
-        let workdir = lg
-            .workdir
-            .read()
-            .map_err(|_| LagritError::RwLockPoisoned)?
-            .clone();
-        let currentdir = std::env::current_dir()?;
+            let workdir = lg
+                .workdir
+                .read()
+                .map_err(|_| LagritError::RwLockPoisoned)?
+                .clone();
+            let currentdir = std::env::current_dir()?;
 
-        let file_name = self
-            .file
-            .file_name()
-            .and_then(|s| s.to_str())
-            .ok_or_else(|| LagritError::InvalidPath(self.file.to_string_lossy().to_string()))?;
+            let file_name = file
+                .file_name()
+                .and_then(|s| s.to_str())
+                .ok_or_else(|| LagritError::InvalidPath(file.to_string_lossy().to_string()))?;
 
-        // Create symbolic link if workdir is different from currentdir
-        let file_path = if self.file.is_absolute() {
-            self.file.clone()
-        } else {
-            currentdir.join(&self.file)
-        };
+            // Create symbolic link if workdir is different from currentdir
+            let file_path = if file.is_absolute() {
+                file.clone()
+            } else {
+                currentdir.join(file)
+            };
 
-        let link_path = match file_path.parent() {
-            Some(parent) if parent != workdir => {
-                let link_path = workdir.join(file_name);
-                std::os::unix::fs::symlink(file_path, &link_path)?;
-                Some(link_path)
-            }
-            _ => None,
-        };
+            if let Some(parent) = file_path.parent() {
+                if parent != workdir {
+                    let link_path = workdir.join(file_name);
+                    std::os::unix::fs::symlink(file_path, &link_path)?;
+                    link_paths.push(link_path);
+                }
+            };
+        }
 
         lg.sendcmd(cmd)?;
 
         // Remove symbolic link
-        link_path.map(std::fs::remove_file).transpose()?;
+        for link_path in link_paths {
+            std::fs::remove_file(link_path)?;
+        }
 
         Ok(())
     }

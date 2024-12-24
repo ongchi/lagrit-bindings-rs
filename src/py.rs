@@ -106,6 +106,10 @@ pub struct LgCmdWithInput(Arc<CmdWithInput>);
 
 #[pymethods]
 impl LgCmdWithInput {
+    fn with_input(&mut self, input: &str) -> PyResult<Self> {
+        Ok(Self(Arc::new(self.0.with_input(input))))
+    }
+
     fn sendcmd(&self, cmd: &str) -> PyResult<()> {
         Ok(self.0.sendcmd(cmd)?)
     }
