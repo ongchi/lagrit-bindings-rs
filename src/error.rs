@@ -28,6 +28,8 @@ pub enum LagritError {
     InvalidValueType,
     #[error("Invalid path: {0}")]
     InvalidPath(String),
+    #[error("cmd: {0}\n{1}")]
+    ErrorWithMessage(String, String),
     #[error("Error code: {0}")]
     Code(i32),
     #[error(transparent)]

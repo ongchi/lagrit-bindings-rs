@@ -156,6 +156,17 @@ impl LaGriT {
 
         d.pop()?;
 
+        for line in self.cmdmsg()?.lines() {
+            if line.contains("ERROR") {
+                return Err(LagritError::ErrorWithMessage(
+                    cmd.to_string(),
+                    line.to_string(),
+                ));
+            } else if line.contains("WARNING") {
+                println!("WARNING: {}\n{}", cmd, line);
+            }
+        }
+
         Ok(())
     }
 
