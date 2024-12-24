@@ -435,17 +435,19 @@ impl CmdWithInput {
             .ok_or_else(|| LagritError::InvalidPath(self.file.to_string_lossy().to_string()))?;
 
         // Create symbolic link if workdir is different from currentdir
-        let link_path = if workdir != currentdir {
-            let file_path = if self.file.is_absolute() {
-                self.file.clone()
-            } else {
-                currentdir.join(&self.file)
-            };
-            let link_path = workdir.join(file_name);
-            std::os::unix::fs::symlink(file_path, &link_path)?;
-            Some(link_path)
+        let file_path = if self.file.is_absolute() {
+            self.file.clone()
         } else {
-            None
+            currentdir.join(&self.file)
+        };
+
+        let link_path = match file_path.parent() {
+            Some(parent) if parent != workdir => {
+                let link_path = workdir.join(file_name);
+                std::os::unix::fs::symlink(file_path, &link_path)?;
+                Some(link_path)
+            }
+            _ => None,
         };
 
         lg.sendcmd(cmd)?;
