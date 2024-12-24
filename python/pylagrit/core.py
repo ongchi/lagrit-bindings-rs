@@ -80,13 +80,6 @@ class PyLaGriT:
 
     def sendcmd(self, cmd: str):
         self.core.sendcmd(cmd)
-        for line in self.before.splitlines():
-            if "WARNING" in line:
-                logging.warning(line)
-            elif "ERROR" in line:
-                logging.error(line)
-            else:
-                logging.debug(line)
 
     def close(self):
         self.core.close()

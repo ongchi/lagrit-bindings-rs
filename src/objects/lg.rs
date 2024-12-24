@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use log;
 use std::{
     ffi::CString,
     fs::File,
@@ -163,7 +164,7 @@ impl LaGriT {
                     line.to_string(),
                 ));
             } else if line.contains("WARNING") {
-                println!("WARNING: {}\n{}", cmd, line);
+                log::warn!("WARNING: {}\n{}", cmd, line);
             }
         }
 

@@ -206,6 +206,8 @@ impl PyLaGriT {
 
 #[pymodule]
 fn lagrit_bindings(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    pyo3_log::init();
+
     m.add_class::<PyMeshObject>()?;
     m.add_class::<LgCmdWithInput>()?;
     m.add_class::<LgCmdWithOutput>()?;
