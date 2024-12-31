@@ -8,6 +8,9 @@ fn main() {
     // LaGriT
     let mut cmake_config = cmake::Config::new(vendor_dir.join("lagrit"));
     cmake_config.define("CMAKE_INSTALL_PREFIX", &out_path);
+    cmake_config.define("CMAKE_C_FLAGS", "-fPIC");
+    cmake_config.define("CMAKE_CXX_FLAGS", "-fPIC");
+    cmake_config.define("CMAKE_Fortran_FLAGS", "-fPIC");
 
     if cfg!(feature = "exodus") {
         cmake_config.define("LAGRIT_BUILD_EXODUS", "ON");

@@ -29,15 +29,28 @@
       devShells.default = pkgs.mkShellNoCC {
         buildInputs = [
           toolchain
+          pkgs.libclang.lib
+          pkgs.llvmPackages.libcxxClang
           pkgs.cmake
           pkgs.gfortran
           pkgs.libcxx
           pkgs.libiconv
           pkgs.curl
           pkgs.maturin
+          pkgs.python3Full
+          pkgs.python3Packages.pip
+          pkgs.python3Packages.numpy
+          pkgs.python3Packages.pyvista
+          pkgs.python3Packages.pytest
           pkgs.python3Packages.venvShellHook
         ];
         venvDir = "venv";
+        env = {
+          RUSTFLAGS="-C linker=${pkgs.gfortran}/bin/gcc";
+          CC = "${pkgs.gfortran}/bin/gcc";
+          CXX = "${pkgs.gfortran}/bin/g++";
+          LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+        };
       };
     });
 }
