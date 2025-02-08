@@ -1,6 +1,5 @@
 import logging
 from collections import defaultdict
-
 from typing import (
     Annotated,
     Dict,
@@ -17,8 +16,6 @@ from typing import (
 import numpy as np
 import numpy.typing as npt
 import pyvista as pv
-from pyvista import CellType
-
 from lagrit_bindings import LaGriT, MeshObject
 from pylagrit.cell_type_maps import (
     CELL_NODE_NUMBERS,
@@ -27,6 +24,7 @@ from pylagrit.cell_type_maps import (
     lg_to_vtk_celltypes,
     pv_ug_to_lg,
 )
+from pyvista import CellType
 
 DType = TypeVar("DType", bound=np.generic)
 Points = Annotated[npt.NDArray[DType], Literal["N", 3]]
@@ -3016,8 +3014,9 @@ class MO:
             else:
                 e_refine.refine()
 
-            mo.rmpoint_eltset(e_refine)
+            self.rmpoint_eltset(e_refine)
             e_refine.delete()
+            self.delatt(attr_name)
 
         if imt is not None:
             attr_name = self.intersect_elements(mo)
@@ -3025,6 +3024,7 @@ class MO:
             p = e_attr.pset()
             p.setatt("imt", imt)
             p.delete()
+            self.delatt(attr_name)
 
     def intersect_elements(self, mo: "MO", attr_name: Optional[str] = None):
         """
@@ -3045,7 +3045,8 @@ class MO:
         str of attribute name
 
         """
-        attr_name = attr_name if attr_name else "attr00"
+        if attr_name is None:
+            attr_name = new_name("tmp", [attr["name"] for attr in self.obj.attr_list()])
         self.sendcmd("/".join(["intersect_elements", self.name, mo.name, attr_name]))
         return attr_name
 
