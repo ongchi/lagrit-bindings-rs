@@ -1986,7 +1986,7 @@ class MO:
         for attr in export_attrs:
             attr_name = cast(str, attr[0])
             length = attr[1]["length"]
-            attr_data = cast(List[int | float], self.attr(attr_name))
+            attr_data = np.array(self.attr(attr_name))
 
             if length == "nnodes":
                 mesh.point_data[attr_name] = attr_data
@@ -2062,7 +2062,7 @@ class MO:
         Dump PFLOTRAN unstructured implicit (ugi) file
         """
         points = self.points
-        eltypeids = cast(int, self.attr("itettyp"))
+        eltypeids = np.array(self.attr("itettyp"))
         eltypes = PF_CELL_TYPE_MAP[eltypeids - 1]
         cells = self.cells
 
@@ -3859,7 +3859,7 @@ class EltSet:
         self._parent.addatt(att_name, vtype="vint", length="nelements", value=0)
         self.setatt(att_name, 1)
 
-        mask = cast(List[int], self._parent.obj.attr(att_name))
+        mask = np.array(self._parent.obj.attr(att_name))
 
         if filename.endswith(".h5"):
             from h5py import File
