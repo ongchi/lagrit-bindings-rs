@@ -2076,7 +2076,7 @@ class MO:
 
                 n_nodes = cells[cell_idx]
                 cell_idx += 1
-                pf_ugi.write(" ".join(map(str, cells[cell_idx : cell_idx + n_nodes])))
+                pf_ugi.write(" ".join(map(str, cells[cell_idx : cell_idx + n_nodes] + 1)))
                 pf_ugi.write("\n")
                 cell_idx += n_nodes
 
