@@ -6,15 +6,19 @@
     };
     flake-utils.url = "github:numtide/flake-utils";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    rust-overlay.url = "github:oxalica/rust-overlay";
   };
 
-  outputs = {
-    self,
-    fenix,
-    flake-utils,
-    nixpkgs,
-  }:
-    flake-utils.lib.eachDefaultSystem (system: let
+  outputs =
+    { self
+    , fenix
+    , flake-utils
+    , nixpkgs
+    , rust-overlay
+    ,
+    }:
+    flake-utils.lib.eachDefaultSystem (system:
+    let
       toolchain = with fenix.packages.${system};
         combine [
           stable.cargo
@@ -24,11 +28,16 @@
           stable.rustfmt
           rust-analyzer
         ];
-      pkgs = nixpkgs.legacyPackages.${system};
-    in {
+      overlays = [ (import rust-overlay) ];
+      pkgs = import nixpkgs {
+        inherit system overlays;
+      };
+    in
+    {
       devShells.default = pkgs.mkShellNoCC {
         buildInputs = [
           toolchain
+          pkgs.cargo-audit
           pkgs.libclang.lib
           pkgs.llvmPackages.libcxxClang
           pkgs.cmake
@@ -46,7 +55,7 @@
         ];
         venvDir = "venv";
         env = {
-          RUSTFLAGS="-C linker=${pkgs.gfortran}/bin/gcc";
+          RUSTFLAGS = "-C linker=${pkgs.gfortran}/bin/gcc";
           CC = "${pkgs.gfortran}/bin/gcc";
           CXX = "${pkgs.gfortran}/bin/g++";
           LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
